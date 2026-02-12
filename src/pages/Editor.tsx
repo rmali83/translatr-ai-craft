@@ -4,18 +4,38 @@ import {
   Sparkles,
   Check,
   AlertTriangle,
-  ChevronDown,
   Copy,
-  RotateCcw,
   BookOpen,
   Database,
   MessageSquare,
   FileText,
 } from "lucide-react";
+import { useAITranslation } from "@/hooks/useAITranslation";
+import type { TranslationResult, QAResult, RiskResult, RewriteResult } from "@/hooks/useAITranslation";
+import AISuggestionsPanel from "@/components/editor/AISuggestionsPanel";
+import AIQAPanel from "@/components/editor/AIQAPanel";
+import AIAssistantChat from "@/components/editor/AIAssistantChat";
+import { toast } from "@/hooks/use-toast";
+
+const GLOSSARY = [
+  { en: "Enterprise-grade", de: "auf Unternehmensniveau" },
+  { en: "Security", de: "Sicherheit" },
+  { en: "Data", de: "Daten" },
+  { en: "Platform", de: "Plattform" },
+  { en: "Workflow", de: "Arbeitsablauf" },
+];
 
 export default function Editor() {
   const [segments, setSegments] = useState<TranslationSegment[]>(mockSegments);
   const [activeSegment, setActiveSegment] = useState<number>(3);
+  const [showChat, setShowChat] = useState(false);
+  const [aiResult, setAiResult] = useState<TranslationResult | null>(null);
+  const [rewriteResult, setRewriteResult] = useState<RewriteResult | null>(null);
+  const [qaResult, setQaResult] = useState<QAResult | null>(null);
+  const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
+
+  const ai = useAITranslation();
+  const active = segments.find((s) => s.id === activeSegment);
 
   const handleTargetChange = (id: number, value: string) => {
     setSegments((prev) =>
@@ -31,7 +51,68 @@ export default function Editor() {
     );
   };
 
-  const active = segments.find((s) => s.id === activeSegment);
+  const applyTranslation = (text: string) => {
+    if (!active) return;
+    handleTargetChange(active.id, text);
+    toast({ title: "Translation applied", description: "AI suggestion applied to segment." });
+  };
+
+  const handleTranslate = async () => {
+    if (!active) return;
+    setRewriteResult(null);
+    try {
+      const result = await ai.translate(active.source, "EN", "DE", GLOSSARY);
+      setAiResult(result);
+    } catch {
+      toast({ title: "AI Error", description: "Failed to get translation.", variant: "destructive" });
+    }
+  };
+
+  const handleRewrite = async () => {
+    if (!active?.target) return;
+    setAiResult(null);
+    try {
+      const result = await ai.rewrite(active.source, active.target);
+      setRewriteResult(result);
+    } catch {
+      toast({ title: "AI Error", description: "Failed to rewrite.", variant: "destructive" });
+    }
+  };
+
+  const handleQA = async () => {
+    if (!active?.target) {
+      toast({ title: "No translation", description: "Translate the segment first.", variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await ai.qaCheck(active.source, active.target, GLOSSARY);
+      setQaResult(result);
+    } catch {
+      toast({ title: "AI Error", description: "QA check failed.", variant: "destructive" });
+    }
+  };
+
+  const handleRisk = async () => {
+    if (!active?.target) {
+      toast({ title: "No translation", description: "Translate the segment first.", variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await ai.riskScore(active.source, active.target);
+      setRiskResult(result);
+    } catch {
+      toast({ title: "AI Error", description: "Risk scoring failed.", variant: "destructive" });
+    }
+  };
+
+  // Reset AI results when switching segments
+  const selectSegment = (id: number) => {
+    setActiveSegment(id);
+    setAiResult(null);
+    setRewriteResult(null);
+    setQaResult(null);
+    setRiskResult(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -56,21 +137,28 @@ export default function Editor() {
             <span className="w-2 h-2 rounded-full bg-muted-foreground" />
             {segments.filter((s) => s.status === "untranslated").length} untranslated
           </span>
+          <button
+            onClick={() => setShowChat((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              showChat
+                ? "bg-accent text-accent-foreground"
+                : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
+          >
+            <Sparkles className="w-3 h-3" /> AI Assistant
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Main Editor */}
-        <div className="lg:col-span-3 bg-card rounded-xl border border-border overflow-hidden">
-          {/* Column Headers */}
+        <div className={`${showChat ? "lg:col-span-2" : "lg:col-span-3"} bg-card rounded-xl border border-border overflow-hidden`}>
           <div className="grid grid-cols-[40px_1fr_1fr_80px] border-b border-border bg-secondary/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <div className="px-3 py-2.5">#</div>
             <div className="px-3 py-2.5">Source (EN)</div>
             <div className="px-3 py-2.5">Target (DE)</div>
             <div className="px-3 py-2.5 text-center">Status</div>
           </div>
-
-          {/* Segments */}
           <div className="divide-y divide-border">
             {segments.map((seg) => (
               <div
@@ -78,7 +166,7 @@ export default function Editor() {
                 className={`grid grid-cols-[40px_1fr_1fr_80px] group cursor-pointer transition-colors ${
                   activeSegment === seg.id ? "bg-accent/5" : "hover:bg-secondary/30"
                 }`}
-                onClick={() => setActiveSegment(seg.id)}
+                onClick={() => selectSegment(seg.id)}
               >
                 <div className="px-3 py-3 text-xs text-muted-foreground flex items-start pt-4">
                   {seg.id}
@@ -120,27 +208,27 @@ export default function Editor() {
 
         {/* Right Panel */}
         <div className="space-y-4">
-          {/* AI Suggestions */}
-          <div className="bg-card rounded-xl border border-border p-4 ai-glow">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <h3 className="text-sm font-semibold text-foreground">AI Suggestions</h3>
-            </div>
-            {active ? (
-              <div className="space-y-2">
-                <div className="p-2.5 rounded-lg bg-ai-muted text-sm text-foreground cursor-pointer hover:ring-1 hover:ring-accent transition-all">
-                  <p className="text-xs text-accent font-medium mb-1">Neural MT · 94%</p>
-                  Sicherheit auf Unternehmensniveau stellt sicher, dass Ihre Daten immer geschützt sind.
-                </div>
-                <div className="p-2.5 rounded-lg bg-secondary text-sm text-foreground cursor-pointer hover:ring-1 hover:ring-border transition-all">
-                  <p className="text-xs text-muted-foreground font-medium mb-1">Alternative · 87%</p>
-                  Sicherheit auf Enterprise-Niveau sorgt dafür, dass Ihre Daten stets geschützt bleiben.
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Select a segment to see suggestions</p>
-            )}
-          </div>
+          {/* AI Suggestions Panel */}
+          <AISuggestionsPanel
+            active={active ? { source: active.source, target: active.target } : null}
+            aiResult={aiResult}
+            rewriteResult={rewriteResult}
+            loading={ai.loading}
+            onTranslate={handleTranslate}
+            onRewrite={handleRewrite}
+            onApply={applyTranslation}
+          />
+
+          {/* AI QA & Risk Panel */}
+          {active?.target && (
+            <AIQAPanel
+              qaResult={qaResult}
+              riskResult={riskResult}
+              loading={ai.loading}
+              onRunQA={handleQA}
+              onRunRisk={handleRisk}
+            />
+          )}
 
           {/* TM Matches */}
           <div className="bg-card rounded-xl border border-border p-4">
@@ -173,11 +261,7 @@ export default function Editor() {
               <h3 className="text-sm font-semibold text-foreground">Glossary</h3>
             </div>
             <div className="space-y-1.5">
-              {[
-                { en: "Enterprise-grade", de: "auf Unternehmensniveau" },
-                { en: "Security", de: "Sicherheit" },
-                { en: "Data", de: "Daten" },
-              ].map((term, i) => (
+              {GLOSSARY.map((term, i) => (
                 <div key={i} className="flex justify-between text-xs py-1">
                   <span className="text-muted-foreground">{term.en}</span>
                   <span className="text-foreground font-medium">{term.de}</span>
@@ -201,6 +285,16 @@ export default function Editor() {
             </div>
           )}
         </div>
+
+        {/* AI Assistant Chat */}
+        {showChat && (
+          <div className="lg:col-span-1">
+            <AIAssistantChat
+              context={active ? { source: active.source, target: active.target } : undefined}
+              onClose={() => setShowChat(false)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
