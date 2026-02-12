@@ -1,6 +1,19 @@
 import { Users, Plus, Mail, MoreVertical } from "lucide-react";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Team() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -8,9 +21,60 @@ export default function Team() {
           <h1 className="text-2xl font-bold text-foreground">Team</h1>
           <p className="text-muted-foreground mt-1">Manage team members and collaborators</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-          <Plus className="w-4 h-4" /> Invite Member
-        </button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+              <Plus className="w-4 h-4" /> Invite Member
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[450px]">
+            <DialogHeader>
+              <DialogTitle>Invite Team Member</DialogTitle>
+              <DialogDescription>
+                Send an invitation to a new team member to join your workspace.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="member-name">Full Name</Label>
+                <Input id="member-name" placeholder="e.g., John Doe" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="member-email">Email Address</Label>
+                <Input id="member-email" type="email" placeholder="e.g., john@example.com" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="member-role">Role</Label>
+                <select
+                  id="member-role"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option>Translator</option>
+                  <option>Reviewer</option>
+                  <option>Project Manager</option>
+                  <option>Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsDialogOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // Add invitation logic here
+                  setIsDialogOpen(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Send Invitation
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

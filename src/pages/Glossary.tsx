@@ -1,6 +1,19 @@
 import { BookOpen, Search, Plus, Edit, Trash2 } from "lucide-react";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Glossary() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -8,9 +21,70 @@ export default function Glossary() {
           <h1 className="text-2xl font-bold text-foreground">Glossary</h1>
           <p className="text-muted-foreground mt-1">Manage terminology and glossary terms</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-          <Plus className="w-4 h-4" /> Add Term
-        </button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+              <Plus className="w-4 h-4" /> Add Term
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[450px]">
+            <DialogHeader>
+              <DialogTitle>Add Glossary Term</DialogTitle>
+              <DialogDescription>
+                Add a new term to your glossary for consistent translations.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="term">Term (Source)</Label>
+                <Input id="term" placeholder="e.g., Dashboard" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="translation">Translation (Target)</Label>
+                <Input id="translation" placeholder="e.g., Tableau de bord" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="source-lang">Source Language</Label>
+                  <Input id="source-lang" placeholder="e.g., EN" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="target-lang">Target Language</Label>
+                  <Input id="target-lang" placeholder="e.g., FR" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <select
+                  id="category"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option>UI</option>
+                  <option>General</option>
+                  <option>Technical</option>
+                  <option>Marketing</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsDialogOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // Add term creation logic here
+                  setIsDialogOpen(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Add Term
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="bg-card rounded-xl border border-border p-6">
