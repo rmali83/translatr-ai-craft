@@ -213,6 +213,88 @@ class ApiService {
       throw new Error('Failed to delete glossary term');
     }
   }
+
+  // Workflow endpoints
+  async getProjectWorkflowStatus(projectId: string): Promise<{
+    project_status: string;
+    segment_counts: {
+      total: number;
+      draft: number;
+      confirmed: number;
+      reviewed: number;
+    };
+    all_confirmed: boolean;
+    can_move_to_review: boolean;
+  }> {
+    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/status`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch workflow status');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async updateProjectStatus(projectId: string, status: string): Promise<Project> {
+    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to update project status');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async confirmAllSegments(projectId: string): Promise<{ updated_count: number; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/confirm-all`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to confirm all segments');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async getSegmentsByStatus(projectId: string, status?: string): Promise<Segment[]> {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/workflow/segments/${projectId}/filter?${params.toString()}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch segments');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async updateSegmentStatus(segmentId: string, status: string): Promise<Segment> {
+    const response = await fetch(`${this.baseUrl}/api/workflow/segment/${segmentId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update segment status');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
 }
 
 export const api = new ApiService(API_BASE_URL);

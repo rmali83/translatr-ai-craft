@@ -1,8 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, CheckCheck, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { api, type Project, type Segment as ApiSegment, type GlossaryTerm } from '@/services/api';
 import { SegmentRow } from '@/components/SegmentRow';
@@ -11,6 +29,14 @@ interface Segment extends Omit<ApiSegment, 'status'> {
   status: 'draft' | 'confirmed' | 'reviewed';
 }
 
+const PROJECT_STATUSES = [
+  { value: 'draft', label: 'Draft', color: 'bg-gray-500/15 text-gray-500' },
+  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500/15 text-blue-500' },
+  { value: 'review', label: 'Review', color: 'bg-yellow-500/15 text-yellow-500' },
+  { value: 'approved', label: 'Approved', color: 'bg-green-500/15 text-green-500' },
+  { value: 'completed', label: 'Completed', color: 'bg-purple-500/15 text-purple-500' },
+];
+
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -18,12 +44,16 @@ export default function ProjectDetail() {
   
   const [project, setProject] = useState<Project | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [filteredSegments, setFilteredSegments] = useState<Segment[]>([]);
   const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
   const [loading, setLoading] = useState(true);
   const [translatingSegments, setTranslatingSegments] = useState<Set<string>>(new Set());
   const [savingSegments, setSavingSegments] = useState<Set<string>>(new Set());
   const [sourceText, setSourceText] = useState('');
   const [showUpload, setShowUpload] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [workflowStatus, setWorkflowStatus] = useState<any>(null);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -31,18 +61,24 @@ export default function ProjectDetail() {
     }
   }, [id]);
 
+  useEffect(() => {
+    filterSegments();
+  }, [segments, statusFilter]);
+
   const loadProjectData = async () => {
     if (!id) return;
     
     try {
       setLoading(true);
-      const [projectData, segmentsData] = await Promise.all([
+      const [projectData, segmentsData, workflowData] = await Promise.all([
         api.getProject(id),
         api.getSegments(id),
+        api.getProjectWorkflowStatus(id),
       ]);
       
       setProject(projectData);
       setSegments(segmentsData.map(s => ({ ...s, status: (s.status as any) || 'draft' })));
+      setWorkflowStatus(workflowData);
 
       // Load glossary terms for the language pair
       if (projectData.source_language && projectData.target_language) {
@@ -60,6 +96,88 @@ export default function ProjectDetail() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterSegments = () => {
+    if (statusFilter === 'all') {
+      setFilteredSegments(segments);
+    } else {
+      setFilteredSegments(segments.filter(s => s.status === statusFilter));
+    }
+  };
+
+  const handleConfirmAll = async () => {
+    if (!id) return;
+
+    try {
+      const result = await api.confirmAllSegments(id);
+      
+      toast({
+        title: 'Success',
+        description: result.message,
+      });
+
+      await loadProjectData();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to confirm all segments',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleMoveToReview = async () => {
+    if (!id || !project) return;
+
+    try {
+      await api.updateProjectStatus(id, 'review');
+      
+      toast({
+        title: 'Success',
+        description: 'Project moved to review',
+      });
+
+      setShowReviewDialog(false);
+      await loadProjectData();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to move project to review',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!id) return;
+
+    if (newStatus === 'review' && !workflowStatus?.can_move_to_review) {
+      setShowReviewDialog(true);
+      return;
+    }
+
+    try {
+      await api.updateProjectStatus(id, newStatus);
+      
+      toast({
+        title: 'Success',
+        description: 'Project status updated',
+      });
+
+      await loadProjectData();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update project status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getProjectStatusBadge = (status: string) => {
+    const statusConfig = PROJECT_STATUSES.find(s => s.value === status);
+    return statusConfig || PROJECT_STATUSES[0];
   };
 
   const splitIntoSentences = (text: string): string[] => {
@@ -228,17 +346,77 @@ export default function ProjectDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{project?.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-foreground">{project?.name}</h1>
+              <Badge className={getProjectStatusBadge(project?.status || 'draft').color}>
+                {getProjectStatusBadge(project?.status || 'draft').label}
+              </Badge>
+            </div>
             <p className="text-muted-foreground mt-1">
               {project?.source_language} → {project?.target_language}
             </p>
           </div>
         </div>
-        <Button onClick={() => setShowUpload(!showUpload)} className="gap-2">
-          <Upload className="w-4 h-4" />
-          Upload Text
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={project?.status || 'draft'} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PROJECT_STATUSES.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setShowUpload(!showUpload)} className="gap-2">
+            <Upload className="w-4 h-4" />
+            Upload Text
+          </Button>
+        </div>
       </div>
+
+      {/* Workflow Actions */}
+      {workflowStatus && (
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-sm text-muted-foreground">Segment Status</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-sm">
+                    <span className="font-semibold text-warning">{workflowStatus.segment_counts.draft}</span> Draft
+                  </span>
+                  <span className="text-sm">
+                    <span className="font-semibold text-success">{workflowStatus.segment_counts.confirmed}</span> Confirmed
+                  </span>
+                  <span className="text-sm">
+                    <span className="font-semibold text-info">{workflowStatus.segment_counts.reviewed}</span> Reviewed
+                  </span>
+                </div>
+              </div>
+              {!workflowStatus.all_confirmed && workflowStatus.segment_counts.draft > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleConfirmAll}
+                  className="gap-2"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  Confirm All ({workflowStatus.segment_counts.draft})
+                </Button>
+              )}
+            </div>
+            {workflowStatus.all_confirmed && (
+              <div className="flex items-center gap-2 text-sm text-success">
+                <CheckCheck className="w-4 h-4" />
+                All segments confirmed
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Upload Text Area */}
       {showUpload && (
@@ -264,20 +442,34 @@ export default function ProjectDetail() {
       {/* Segments Editor */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="grid grid-cols-2 border-b border-border bg-secondary/50">
-          <div className="px-6 py-4 border-r border-border">
+          <div className="px-6 py-4 border-r border-border flex items-center justify-between">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Source ({project?.source_language})
             </h3>
           </div>
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 flex items-center justify-between">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Target ({project?.target_language})
             </h3>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="reviewed">Reviewed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
         <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
-          {segments.map((segment) => (
+          {filteredSegments.map((segment) => (
             <SegmentRow
               key={segment.id}
               segment={segment}
@@ -292,9 +484,13 @@ export default function ProjectDetail() {
           ))}
         </div>
 
-        {segments.length === 0 && (
+        {filteredSegments.length === 0 && (
           <div className="px-6 py-12 text-center text-muted-foreground">
-            <p>No segments yet. Upload some text to get started.</p>
+            <p>
+              {statusFilter === 'all'
+                ? 'No segments yet. Upload some text to get started.'
+                : `No ${statusFilter} segments found.`}
+            </p>
           </div>
         )}
       </div>
@@ -326,6 +522,26 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
+
+      {/* Review Dialog */}
+      <AlertDialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cannot Move to Review</AlertDialogTitle>
+            <AlertDialogDescription>
+              All segments must be confirmed before moving the project to review status.
+              <br /><br />
+              Current status: {workflowStatus?.segment_counts.draft} draft segments remaining.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAll}>
+              Confirm All Segments
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

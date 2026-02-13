@@ -6,6 +6,7 @@ import projectsRoutes from './routes/projects';
 import segmentsRoutes from './routes/segments';
 import translationMemoryRoutes from './routes/translationMemory';
 import glossaryRoutes from './routes/glossary';
+import workflowRoutes from './routes/workflow';
 
 // Load environment variables
 dotenv.config();
@@ -33,6 +34,7 @@ app.use('/api/projects', projectsRoutes);
 app.use('/api/segments', segmentsRoutes);
 app.use('/api/tm', translationMemoryRoutes);
 app.use('/api/glossary', glossaryRoutes);
+app.use('/api/workflow', workflowRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
