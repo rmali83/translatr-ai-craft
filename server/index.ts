@@ -2,6 +2,10 @@ import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import translateRoutes from './routes/translate';
+import projectsRoutes from './routes/projects';
+import segmentsRoutes from './routes/segments';
+import translationMemoryRoutes from './routes/translationMemory';
+import glossaryRoutes from './routes/glossary';
 
 // Load environment variables
 dotenv.config();
@@ -25,6 +29,10 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Routes
 app.use('/api/translate', translateRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/segments', segmentsRoutes);
+app.use('/api/tm', translationMemoryRoutes);
+app.use('/api/glossary', glossaryRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
