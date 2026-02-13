@@ -9,33 +9,19 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_7SSO5EDvXeTaKIGgescbvA_-yTxBQAz
 VITE_API_URL=http://localhost:5000
 ```
 
-### Backend `server/.env` - ⚠️ NEEDS SERVICE ROLE KEY
+### Backend `server/.env` - ✅ CONFIGURED
 ```
 SUPABASE_URL=https://yizsijfuwqiwbxncmrga.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=❌ STILL PLACEHOLDER - NEEDS REAL KEY
+SUPABASE_SERVICE_ROLE_KEY=✅ CONFIGURED
 AI_PROVIDER=mock ✅ (Good for testing)
 CLIENT_URL=http://localhost:5173 ✅
 ```
 
 ---
 
-## 🔑 Step 1: Get Supabase Service Role Key (5 minutes)
+## 🔑 Step 1: Get Supabase Service Role Key ✅ COMPLETE
 
-### Option A: From Supabase Dashboard
-1. Go to: https://supabase.com/dashboard/project/yizsijfuwqiwbxncmrga/settings/api
-2. Scroll to "Project API keys"
-3. Find **"service_role"** key (⚠️ Keep this secret!)
-4. Click "Reveal" and copy the key
-5. Paste into `server/.env`:
-   ```
-   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   ```
-
-### Option B: Using Supabase CLI
-```bash
-supabase status
-# Look for "service_role key"
-```
+Your Supabase service role key has been configured in `server/.env`.
 
 ---
 

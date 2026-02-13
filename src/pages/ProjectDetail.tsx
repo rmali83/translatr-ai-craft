@@ -56,7 +56,7 @@ export default function ProjectDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { canEdit, isAdmin, user } = useAuth();
-  const { joinProject, leaveProject, saveSegment, connected } = useSocket();
+  const { joinProject, leaveProject, saveSegment, connected, socket } = useSocket();
   
   const [project, setProject] = useState<Project | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
@@ -98,6 +98,27 @@ export default function ProjectDetail() {
     window.addEventListener('refresh-segments', handleRefresh);
     return () => window.removeEventListener('refresh-segments', handleRefresh);
   }, [id]);
+
+  // Listen for socket events and update segments
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    const handleSegmentSaved = (data: any) => {
+      setSegments(prev =>
+        prev.map(s =>
+          s.id === data.segmentId
+            ? { ...s, target_text: data.targetText, status: data.status as any }
+            : s
+        )
+      );
+    };
+
+    socket.on('segment-saved', handleSegmentSaved);
+
+    return () => {
+      socket.off('segment-saved', handleSegmentSaved);
+    };
+  }, [socket, connected]);
 
   useEffect(() => {
     if (id) {
@@ -430,12 +451,26 @@ export default function ProjectDetail() {
   };
 
   const handleConfirmSegment = async (segmentId: string) => {
+    const segment = segments.find(s => s.id === segmentId);
+    if (!segment) return;
+
     setSegments(prev =>
       prev.map(s => (s.id === segmentId ? { ...s, status: 'confirmed' } : s))
     );
 
     try {
       await api.updateSegment(segmentId, { status: 'confirmed' });
+      
+      // Emit socket event to notify other users
+      if (socket && projectId) {
+        socket.emit('segment-saved', {
+          segmentId,
+          projectId,
+          userId: user?.id,
+          targetText: segment.target_text,
+          status: 'confirmed',
+        });
+      }
     } catch (error) {
       console.error('Failed to update segment status:', error);
     }

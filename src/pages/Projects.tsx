@@ -1,8 +1,9 @@
-import { mockProjects } from "@/lib/mockData";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Filter, Download } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api, Project } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,65 @@ import { Label } from "@/components/ui/label";
 
 export default function Projects() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    name: '',
+    source_language: '',
+    target_language: '',
+    description: ''
+  });
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const loadProjects = async () => {
+    try {
+      setLoading(true);
+      const projectsData = await api.getProjects();
+      setProjects(projectsData);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load projects",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateProject = async () => {
+    if (!formData.name || !formData.source_language || !formData.target_language) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const project = await api.createProject(formData);
+      toast({
+        title: "Success",
+        description: "Project created successfully"
+      });
+      setIsDialogOpen(false);
+      setFormData({ name: '', source_language: '', target_language: '', description: '' });
+      loadProjects();
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create project",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -43,24 +103,40 @@ export default function Projects() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="project-name">Project Name</Label>
-                  <Input id="project-name" placeholder="e.g., Marketing Website v3.2" />
+                  <Label htmlFor="project-name">Project Name *</Label>
+                  <Input 
+                    id="project-name" 
+                    placeholder="e.g., Marketing Website v3.2"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="source-lang">Source Language</Label>
-                  <Input id="source-lang" placeholder="e.g., English" />
+                  <Label htmlFor="source-lang">Source Language *</Label>
+                  <Input 
+                    id="source-lang" 
+                    placeholder="e.g., English"
+                    value={formData.source_language}
+                    onChange={(e) => setFormData({...formData, source_language: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="target-langs">Target Languages</Label>
-                  <Input id="target-langs" placeholder="e.g., French, German, Spanish" />
+                  <Label htmlFor="target-lang">Target Language *</Label>
+                  <Input 
+                    id="target-lang" 
+                    placeholder="e.g., French"
+                    value={formData.target_language}
+                    onChange={(e) => setFormData({...formData, target_language: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="word-count">Word Count</Label>
-                  <Input id="word-count" type="number" placeholder="e.g., 5000" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deadline">Deadline</Label>
-                  <Input id="deadline" type="date" />
+                  <Label htmlFor="description">Description</Label>
+                  <Input 
+                    id="description" 
+                    placeholder="Optional description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-3">
@@ -71,10 +147,7 @@ export default function Projects() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    // Add project creation logic here
-                    setIsDialogOpen(false);
-                  }}
+                  onClick={handleCreateProject}
                   className="px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Create Project
@@ -86,61 +159,46 @@ export default function Projects() {
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border bg-secondary/50">
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Project</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Languages</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Words</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Progress</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Deadline</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockProjects.map((project) => (
-              <tr key={project.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                <td className="px-5 py-4">
-                  <Link to={`/projects/${project.id}`} className="text-sm font-medium text-foreground hover:text-accent transition-colors">
-                    {project.name}
-                  </Link>
-                </td>
-                <td className="px-5 py-4">
-                  <span className="text-sm text-muted-foreground">
-                    {project.sourceLang} → {project.targetLangs.join(", ")}
-                  </span>
-                </td>
-                <td className="px-5 py-4 text-sm text-muted-foreground">
-                  {project.wordCount.toLocaleString()}
-                </td>
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-2 w-32">
-                    <Progress value={project.progress} className="h-1.5 flex-1" />
-                    <span className="text-xs text-muted-foreground w-8 text-right">{project.progress}%</span>
-                  </div>
-                </td>
-                <td className="px-5 py-4">
-                  <StatusBadge status={project.status} />
-                </td>
-                <td className="px-5 py-4 text-sm text-muted-foreground">{project.deadline}</td>
-                <td className="px-5 py-4">
-                  <div className="flex -space-x-2">
-                    {project.assignees.map((name, i) => (
-                      <div
-                        key={i}
-                        className="w-7 h-7 rounded-full bg-secondary border-2 border-card flex items-center justify-center text-[10px] font-bold text-foreground"
-                        title={name}
-                      >
-                        {name.split(" ").map((n) => n[0]).join("")}
-                      </div>
-                    ))}
-                  </div>
-                </td>
+        {loading ? (
+          <div className="p-8 text-center text-muted-foreground">Loading projects...</div>
+        ) : projects.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">
+            No projects yet. Create your first project to get started!
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-secondary/50">
+                <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Project</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Languages</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Created</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {projects.map((project) => (
+                <tr key={project.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <td className="px-5 py-4">
+                    <Link to={`/projects/${project.id}`} className="text-sm font-medium text-foreground hover:text-accent transition-colors">
+                      {project.name}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="text-sm text-muted-foreground">
+                      {project.source_language} → {project.target_language}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <StatusBadge status={project.status} />
+                  </td>
+                  <td className="px-5 py-4 text-sm text-muted-foreground">
+                    {new Date(project.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

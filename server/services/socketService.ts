@@ -55,9 +55,16 @@ class SocketService {
           timestamp: Date.now(),
         });
 
-        // Send current locks to the newly joined user
+        // Send current locks to the newly joined user (without timeout objects)
         const projectLocks = Array.from(this.segmentLocks.values())
-          .filter(lock => lock.projectId === projectId);
+          .filter(lock => lock.projectId === projectId)
+          .map(lock => ({
+            segmentId: lock.segmentId,
+            userId: lock.userId,
+            userName: lock.userName,
+            projectId: lock.projectId,
+            lockedAt: lock.lockedAt,
+          }));
         
         socket.emit('current-locks', projectLocks);
       });
