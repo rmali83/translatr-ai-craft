@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { api, type Project, type Segment as ApiSegment } from '@/services/api';
+import { api, type Project, type Segment as ApiSegment, type GlossaryTerm } from '@/services/api';
+import { SegmentRow } from '@/components/SegmentRow';
 
 interface Segment extends Omit<ApiSegment, 'status'> {
   status: 'draft' | 'confirmed' | 'reviewed';
@@ -18,6 +18,7 @@ export default function ProjectDetail() {
   
   const [project, setProject] = useState<Project | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
   const [loading, setLoading] = useState(true);
   const [translatingSegments, setTranslatingSegments] = useState<Set<string>>(new Set());
   const [savingSegments, setSavingSegments] = useState<Set<string>>(new Set());
@@ -42,6 +43,13 @@ export default function ProjectDetail() {
       
       setProject(projectData);
       setSegments(segmentsData.map(s => ({ ...s, status: (s.status as any) || 'draft' })));
+
+      // Load glossary terms for the language pair
+      if (projectData.source_language && projectData.target_language) {
+        const languagePair = `${projectData.source_language}-${projectData.target_language}`;
+        const glossary = await api.getGlossaryTerms(languagePair);
+        setGlossaryTerms(glossary);
+      }
     } catch (error) {
       console.error('Failed to load project:', error);
       toast({
@@ -197,17 +205,6 @@ export default function ProjectDetail() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-success/15 text-success';
-      case 'reviewed':
-        return 'bg-info/15 text-info';
-      default:
-        return 'bg-warning/15 text-warning';
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -281,70 +278,17 @@ export default function ProjectDetail() {
 
         <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
           {segments.map((segment) => (
-            <div key={segment.id} className="grid grid-cols-2">
-              {/* Source Column */}
-              <div className="px-6 py-4 border-r border-border bg-secondary/20">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <Badge className={getStatusColor(segment.status)}>
-                    {segment.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-foreground leading-relaxed">
-                  {segment.source_text}
-                </p>
-              </div>
-
-              {/* Target Column */}
-              <div className="px-6 py-4">
-                <Textarea
-                  value={segment.target_text || ''}
-                  onChange={(e) => handleUpdateSegment(segment.id, e.target.value)}
-                  placeholder="Translation will appear here..."
-                  className="min-h-[80px] mb-3 resize-none"
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleTranslate(segment.id)}
-                    disabled={translatingSegments.has(segment.id)}
-                    className="gap-2"
-                  >
-                    {translatingSegments.has(segment.id) ? (
-                      <>
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Translating...
-                      </>
-                    ) : (
-                      'Translate'
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSaveSegment(segment.id)}
-                    disabled={!segment.target_text || savingSegments.has(segment.id)}
-                    className="gap-2"
-                  >
-                    {savingSegments.has(segment.id) ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Save className="w-3 h-3" />
-                    )}
-                    Save
-                  </Button>
-                  {segment.status === 'draft' && segment.target_text && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleConfirmSegment(segment.id)}
-                      className="gap-2"
-                    >
-                      Confirm
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
+            <SegmentRow
+              key={segment.id}
+              segment={segment}
+              glossaryTerms={glossaryTerms}
+              isTranslating={translatingSegments.has(segment.id)}
+              isSaving={savingSegments.has(segment.id)}
+              onTranslate={() => handleTranslate(segment.id)}
+              onSave={() => handleSaveSegment(segment.id)}
+              onConfirm={() => handleConfirmSegment(segment.id)}
+              onUpdateTarget={(text) => handleUpdateSegment(segment.id, text)}
+            />
           ))}
         </div>
 

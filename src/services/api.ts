@@ -39,6 +39,15 @@ export interface Project {
   created_at: string;
 }
 
+export interface GlossaryTerm {
+  id: string;
+  source_term: string;
+  target_term: string;
+  language_pair: string;
+  description: string | null;
+  created_at?: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -136,6 +145,73 @@ class ApiService {
 
     const data = await response.json();
     return data.data;
+  }
+
+  // Glossary endpoints
+  async getGlossaryTerms(languagePair?: string, search?: string): Promise<GlossaryTerm[]> {
+    const params = new URLSearchParams();
+    if (languagePair) params.append('language_pair', languagePair);
+    if (search) params.append('search', search);
+
+    const response = await fetch(`${this.baseUrl}/api/glossary?${params.toString()}`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch glossary terms');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async getGlossaryTerm(id: string): Promise<GlossaryTerm> {
+    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch glossary term');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async createGlossaryTerm(term: Omit<GlossaryTerm, 'id' | 'created_at'>): Promise<GlossaryTerm> {
+    const response = await fetch(`${this.baseUrl}/api/glossary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(term),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create glossary term');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async updateGlossaryTerm(id: string, updates: Partial<GlossaryTerm>): Promise<GlossaryTerm> {
+    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update glossary term');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async deleteGlossaryTerm(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete glossary term');
+    }
   }
 }
 
