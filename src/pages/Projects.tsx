@@ -102,7 +102,7 @@ export default function Projects() {
             {mockProjects.map((project) => (
               <tr key={project.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                 <td className="px-5 py-4">
-                  <Link to="/editor" className="text-sm font-medium text-foreground hover:text-accent transition-colors">
+                  <Link to={`/projects/${project.id}`} className="text-sm font-medium text-foreground hover:text-accent transition-colors">
                     {project.name}
                   </Link>
                 </td>

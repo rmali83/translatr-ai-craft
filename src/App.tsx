@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 import Editor from "./pages/Editor";
 import TranslationMemory from "./pages/TranslationMemory";
 import Glossary from "./pages/Glossary";
@@ -26,6 +27,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<Index />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/editor" element={<Editor />} />
             <Route path="/tm" element={<TranslationMemory />} />
             <Route path="/glossary" element={<Glossary />} />

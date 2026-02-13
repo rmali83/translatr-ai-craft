@@ -96,7 +96,12 @@ export default function Index() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground truncate">{project.name}</p>
+                    <Link 
+                      to={`/projects/${project.id}`}
+                      className="text-sm font-medium text-foreground hover:text-accent transition-colors truncate"
+                    >
+                      {project.name}
+                    </Link>
                     <StatusBadge status={project.status} />
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
