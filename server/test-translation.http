@@ -1,0 +1,117 @@
+### Test Translation API with TM Integration
+### Use REST Client extension in VS Code or similar tool
+
+### 1. First translation (will use AI and save to TM)
+POST http://localhost:5000/api/translate
+Content-Type: application/json
+
+{
+  "source_text": "Hello, how are you?",
+  "source_lang": "EN",
+  "target_lang": "FR"
+}
+
+### Expected Response:
+# {
+#   "success": true,
+#   "data": {
+#     "source_text": "Hello, how are you?",
+#     "translated_text": "[Translated to FR] Hello, how are you?",
+#     "source_lang": "EN",
+#     "target_lang": "FR",
+#     "source": "AI",
+#     "tm_id": "uuid-here"
+#   }
+# }
+
+###
+
+### 2. Same translation again (will use TM)
+POST http://localhost:5000/api/translate
+Content-Type: application/json
+
+{
+  "source_text": "Hello, how are you?",
+  "source_lang": "EN",
+  "target_lang": "FR"
+}
+
+### Expected Response:
+# {
+#   "success": true,
+#   "data": {
+#     "source_text": "Hello, how are you?",
+#     "translated_text": "[Translated to FR] Hello, how are you?",
+#     "source_lang": "EN",
+#     "target_lang": "FR",
+#     "source": "TM",
+#     "tm_id": "uuid-here"
+#   }
+# }
+
+###
+
+### 3. Translation with project_id (creates segment)
+POST http://localhost:5000/api/translate
+Content-Type: application/json
+
+{
+  "source_text": "Welcome to our application",
+  "source_lang": "EN",
+  "target_lang": "FR",
+  "project_id": "your-project-uuid-here"
+}
+
+###
+
+### 4. Batch translation
+POST http://localhost:5000/api/translate/batch
+Content-Type: application/json
+
+{
+  "texts": [
+    "Good morning",
+    "Good afternoon",
+    "Good evening"
+  ],
+  "source_lang": "EN",
+  "target_lang": "FR"
+}
+
+### Expected Response:
+# {
+#   "success": true,
+#   "data": {
+#     "results": [
+#       {
+#         "source_text": "Good morning",
+#         "translated_text": "...",
+#         "source": "AI" or "TM"
+#       },
+#       ...
+#     ],
+#     "total": 3,
+#     "tm_matches": 0,
+#     "ai_translations": 3
+#   }
+# }
+
+###
+
+### 5. Language detection
+POST http://localhost:5000/api/translate/detect
+Content-Type: application/json
+
+{
+  "text": "Bonjour, comment allez-vous?"
+}
+
+###
+
+### 6. Check translation memory
+GET http://localhost:5000/api/tm?source_lang=EN&target_lang=FR
+
+###
+
+### 7. Search translation memory
+GET http://localhost:5000/api/tm/search?text=Hello&source_lang=EN&target_lang=FR

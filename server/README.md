@@ -47,8 +47,18 @@ npm start
 - **GET** `/health` - Returns server status
 
 ### Translation
-- **POST** `/api/translate` - Translate text
-  - Body: `{ text, sourceLang?, targetLang }`
+- **POST** `/api/translate` - Translate text with TM integration
+  - Body: `{ source_text, source_lang?, target_lang, project_id? }`
+  - Returns: `{ translated_text, source: "TM" | "AI", tm_id }`
+  - Flow:
+    1. Checks translation_memory for exact match
+    2. If found, returns TM result
+    3. If not found, calls AI service
+    4. Saves AI result to translation_memory
+    5. Optionally creates segment if project_id provided
+- **POST** `/api/translate/batch` - Batch translate multiple texts
+  - Body: `{ texts: string[], source_lang?, target_lang, project_id? }`
+  - Returns translation results with TM/AI source indicators
 - **POST** `/api/translate/detect` - Detect language
   - Body: `{ text }`
 
