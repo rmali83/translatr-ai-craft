@@ -18,6 +18,10 @@ export interface TranslateResponse {
     source: 'TM' | 'AI';
     tm_id?: string;
     glossary_terms_used?: number;
+    quality_score?: number;
+    quality_passed?: boolean;
+    quality_violations?: string[];
+    quality_suggestions?: string[];
   };
 }
 
@@ -27,6 +31,9 @@ export interface Segment {
   source_text: string;
   target_text: string | null;
   status: string;
+  quality_score?: number | null;
+  quality_violations?: string[] | null;
+  quality_suggestions?: string[] | null;
   created_at: string;
 }
 
@@ -55,10 +62,24 @@ class ApiService {
     this.baseUrl = baseUrl;
   }
 
+  private getHeaders(): HeadersInit {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add user ID from localStorage for authentication
+    const userId = localStorage.getItem('x-user-id');
+    if (userId) {
+      headers['x-user-id'] = userId;
+    }
+    
+    return headers;
+  }
+
   async translate(request: TranslateRequest): Promise<TranslateResponse> {
     const response = await fetch(`${this.baseUrl}/api/translate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(request),
     });
 
@@ -70,7 +91,9 @@ class ApiService {
   }
 
   async getProject(id: string): Promise<Project> {
-    const response = await fetch(`${this.baseUrl}/api/projects/${id}`);
+    const response = await fetch(`${this.baseUrl}/api/projects/${id}`, {
+      headers: this.getHeaders(),
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch project');
@@ -81,7 +104,9 @@ class ApiService {
   }
 
   async getSegments(projectId: string): Promise<Segment[]> {
-    const response = await fetch(`${this.baseUrl}/api/segments?project_id=${projectId}`);
+    const response = await fetch(`${this.baseUrl}/api/segments?project_id=${projectId}`, {
+      headers: this.getHeaders(),
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch segments');
@@ -94,7 +119,7 @@ class ApiService {
   async createSegment(segment: Partial<Segment>): Promise<Segment> {
     const response = await fetch(`${this.baseUrl}/api/segments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(segment),
     });
 
@@ -109,7 +134,7 @@ class ApiService {
   async updateSegment(id: string, updates: Partial<Segment>): Promise<Segment> {
     const response = await fetch(`${this.baseUrl}/api/segments/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(updates),
     });
 
@@ -122,7 +147,9 @@ class ApiService {
   }
 
   async getProjects(): Promise<Project[]> {
-    const response = await fetch(`${this.baseUrl}/api/projects`);
+    const response = await fetch(`${this.baseUrl}/api/projects`, {
+      headers: this.getHeaders(),
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch projects');
@@ -135,7 +162,7 @@ class ApiService {
   async createProject(project: Partial<Project>): Promise<Project> {
     const response = await fetch(`${this.baseUrl}/api/projects`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(project),
     });
 
@@ -153,7 +180,9 @@ class ApiService {
     if (languagePair) params.append('language_pair', languagePair);
     if (search) params.append('search', search);
 
-    const response = await fetch(`${this.baseUrl}/api/glossary?${params.toString()}`);
+    const response = await fetch(`${this.baseUrl}/api/glossary?${params.toString()}`, {
+      headers: this.getHeaders(),
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch glossary terms');
@@ -164,7 +193,9 @@ class ApiService {
   }
 
   async getGlossaryTerm(id: string): Promise<GlossaryTerm> {
-    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`);
+    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
+      headers: this.getHeaders(),
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch glossary term');
@@ -177,7 +208,7 @@ class ApiService {
   async createGlossaryTerm(term: Omit<GlossaryTerm, 'id' | 'created_at'>): Promise<GlossaryTerm> {
     const response = await fetch(`${this.baseUrl}/api/glossary`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(term),
     });
 
@@ -192,7 +223,7 @@ class ApiService {
   async updateGlossaryTerm(id: string, updates: Partial<GlossaryTerm>): Promise<GlossaryTerm> {
     const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(updates),
     });
 
@@ -207,6 +238,7 @@ class ApiService {
   async deleteGlossaryTerm(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
       method: 'DELETE',
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -226,7 +258,9 @@ class ApiService {
     all_confirmed: boolean;
     can_move_to_review: boolean;
   }> {
-    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/status`);
+    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/status`, {
+      headers: this.getHeaders(),
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch workflow status');
@@ -239,7 +273,7 @@ class ApiService {
   async updateProjectStatus(projectId: string, status: string): Promise<Project> {
     const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/status`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify({ status }),
     });
 
@@ -255,6 +289,7 @@ class ApiService {
   async confirmAllSegments(projectId: string): Promise<{ updated_count: number; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/confirm-all`, {
       method: 'POST',
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -270,7 +305,8 @@ class ApiService {
     if (status) params.append('status', status);
 
     const response = await fetch(
-      `${this.baseUrl}/api/workflow/segments/${projectId}/filter?${params.toString()}`
+      `${this.baseUrl}/api/workflow/segments/${projectId}/filter?${params.toString()}`,
+      { headers: this.getHeaders() }
     );
     
     if (!response.ok) {
@@ -284,12 +320,35 @@ class ApiService {
   async updateSegmentStatus(segmentId: string, status: string): Promise<Segment> {
     const response = await fetch(`${this.baseUrl}/api/workflow/segment/${segmentId}/status`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify({ status }),
     });
 
     if (!response.ok) {
       throw new Error('Failed to update segment status');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  // Auth endpoints
+  async getCurrentUser(userId: string): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    roles: Array<{ role: string; project_id: string | null }>;
+    primary_role: string;
+  }> {
+    const response = await fetch(`${this.baseUrl}/api/auth/me`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user info');
     }
 
     const data = await response.json();

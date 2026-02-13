@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { translateWithAI, GlossaryTerm, detectLanguage } from '../services/aiService';
+import { translateWithAI, translateWithQuality, GlossaryTerm, detectLanguage } from '../services/aiService';
 import { supabase } from '../services/supabaseClient';
 
 const router = Router();
@@ -76,16 +76,21 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // Step 4: No TM match, use AI translation with glossary
-    console.log(`✗ No TM match found, using AI translation`);
-    const translatedText = await translateWithAI(
+    // Step 4: No TM match, use AI translation with glossary and quality evaluation
+    console.log(`✗ No TM match found, using AI translation with quality evaluation`);
+    const { translated_text: translatedText, quality } = await translateWithQuality(
       source_text,
       source_lang || 'auto',
       target_lang,
       glossaryTerms.length > 0 ? glossaryTerms : undefined
     );
 
-    // Step 5: Save AI translation to translation memory
+    console.log(`✓ Translation quality score: ${quality.score}/100 (${quality.passed ? 'PASSED' : 'NEEDS REVIEW'})`);
+    if (quality.terminology_violations.length > 0) {
+      console.log(`⚠ Terminology violations:`, quality.terminology_violations);
+    }
+
+    // Step 5: Save AI translation to translation memory with quality score
     const { data: newTmEntry, error: insertError } = await supabase
       .from('translation_memory')
       .insert([
@@ -94,6 +99,7 @@ router.post('/', async (req: Request, res: Response) => {
           target_text: translatedText,
           source_lang: source_lang || 'auto',
           target_lang,
+          quality_score: quality.score,
         },
       ])
       .select()
@@ -125,7 +131,7 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // Step 7: Return AI translation result
+    // Step 7: Return AI translation result with quality evaluation
     res.status(200).json({
       success: true,
       data: {
@@ -136,6 +142,10 @@ router.post('/', async (req: Request, res: Response) => {
         source: 'AI',
         tm_id: newTmEntry?.id,
         glossary_terms_used: glossaryTerms.length,
+        quality_score: quality.score,
+        quality_passed: quality.passed,
+        quality_violations: quality.terminology_violations,
+        quality_suggestions: quality.suggestions,
       },
     });
   } catch (error) {

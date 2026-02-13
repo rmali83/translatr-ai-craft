@@ -28,6 +28,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
 import { api, type Project, type Segment as ApiSegment, type GlossaryTerm } from '@/services/api';
 import { SegmentRow } from '@/components/SegmentRow';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
@@ -36,6 +38,9 @@ import type { ParsedSegment } from '@/utils/fileParser';
 
 interface Segment extends Omit<ApiSegment, 'status'> {
   status: 'draft' | 'confirmed' | 'reviewed';
+  quality_score?: number | null;
+  quality_violations?: string[] | null;
+  quality_suggestions?: string[] | null;
 }
 
 const PROJECT_STATUSES = [
@@ -50,6 +55,8 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { canEdit, isAdmin, user } = useAuth();
+  const { joinProject, leaveProject, saveSegment, connected } = useSocket();
   
   const [project, setProject] = useState<Project | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
@@ -64,6 +71,33 @@ export default function ProjectDetail() {
   const [workflowStatus, setWorkflowStatus] = useState<any>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
+
+  // Check permissions
+  const canEditProject = canEdit(id);
+  const canManageProject = isAdmin() || user?.primary_role === 'project_manager';
+
+  // Join project room when component mounts
+  useEffect(() => {
+    if (id && connected) {
+      joinProject(id);
+      
+      return () => {
+        leaveProject(id);
+      };
+    }
+  }, [id, connected, joinProject, leaveProject]);
+
+  // Listen for segment refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (id) {
+        loadProjectData();
+      }
+    };
+
+    window.addEventListener('refresh-segments', handleRefresh);
+    return () => window.removeEventListener('refresh-segments', handleRefresh);
+  }, [id]);
 
   useEffect(() => {
     if (id) {
@@ -316,14 +350,25 @@ export default function ProjectDetail() {
         setSegments(prev =>
           prev.map(s =>
             s.id === segmentId
-              ? { ...s, target_text: response.data.translated_text, status: 'draft' }
+              ? { 
+                  ...s, 
+                  target_text: response.data.translated_text, 
+                  status: 'draft',
+                  quality_score: response.data.quality_score,
+                  quality_violations: response.data.quality_violations,
+                  quality_suggestions: response.data.quality_suggestions,
+                }
               : s
           )
         );
 
+        const qualityMessage = response.data.quality_score 
+          ? ` (Quality: ${response.data.quality_score}/100${response.data.quality_passed ? ' ✓' : ' - Review needed'})`
+          : '';
+
         toast({
           title: 'Translated',
-          description: `Source: ${response.data.source}${response.data.glossary_terms_used ? ` (${response.data.glossary_terms_used} glossary terms)` : ''}`,
+          description: `Source: ${response.data.source}${response.data.glossary_terms_used ? ` (${response.data.glossary_terms_used} glossary terms)` : ''}${qualityMessage}`,
         });
       }
     } catch (error) {
@@ -349,7 +394,7 @@ export default function ProjectDetail() {
 
   const handleSaveSegment = async (segmentId: string) => {
     const segment = segments.find(s => s.id === segmentId);
-    if (!segment) return;
+    if (!segment || !id) return;
 
     setSavingSegments(prev => new Set(prev).add(segmentId));
 
@@ -357,7 +402,13 @@ export default function ProjectDetail() {
       await api.updateSegment(segmentId, {
         target_text: segment.target_text,
         status: segment.status,
+        quality_score: segment.quality_score,
+        quality_violations: segment.quality_violations,
+        quality_suggestions: segment.quality_suggestions,
       });
+
+      // Broadcast save to other users via WebSocket
+      saveSegment(segmentId, id, segment.target_text || '', segment.status);
 
       toast({
         title: 'Saved',
@@ -425,18 +476,20 @@ export default function ProjectDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={project?.status || 'draft'} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PROJECT_STATUSES.map((status) => (
-                <SelectItem key={status.value} value={status.value}>
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {canManageProject && (
+            <Select value={project?.status || 'draft'} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROJECT_STATUSES.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -453,14 +506,18 @@ export default function ProjectDetail() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => setShowFileUpload(true)} variant="outline" className="gap-2">
-            <FileUp className="w-4 h-4" />
-            Import File
-          </Button>
-          <Button onClick={() => setShowUpload(!showUpload)} className="gap-2">
-            <Upload className="w-4 h-4" />
-            Add Text
-          </Button>
+          {canEditProject && (
+            <>
+              <Button onClick={() => setShowFileUpload(true)} variant="outline" className="gap-2">
+                <FileUp className="w-4 h-4" />
+                Import File
+              </Button>
+              <Button onClick={() => setShowUpload(!showUpload)} className="gap-2">
+                <Upload className="w-4 h-4" />
+                Add Text
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -483,7 +540,7 @@ export default function ProjectDetail() {
                   </span>
                 </div>
               </div>
-              {!workflowStatus.all_confirmed && workflowStatus.segment_counts.draft > 0 && (
+              {canEditProject && !workflowStatus.all_confirmed && workflowStatus.segment_counts.draft > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -506,7 +563,7 @@ export default function ProjectDetail() {
       )}
 
       {/* Upload Text Area */}
-      {showUpload && (
+      {showUpload && canEditProject && (
         <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Add Source Text</h3>
           <Textarea

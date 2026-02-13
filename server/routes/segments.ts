@@ -101,12 +101,15 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { source_text, target_text, status } = req.body;
+    const { source_text, target_text, status, quality_score, quality_violations, quality_suggestions } = req.body;
 
     const updates: Partial<Segment> = {};
     if (source_text) updates.source_text = source_text;
     if (target_text !== undefined) updates.target_text = target_text;
     if (status) updates.status = status;
+    if (quality_score !== undefined) updates.quality_score = quality_score;
+    if (quality_violations !== undefined) updates.quality_violations = quality_violations;
+    if (quality_suggestions !== undefined) updates.quality_suggestions = quality_suggestions;
 
     const { data, error } = await supabase
       .from('segments')

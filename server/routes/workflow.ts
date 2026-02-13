@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../services/supabaseClient';
+import { hasProjectRole, canReview } from '../middleware/rbac';
 
 const router = Router();
 
@@ -54,7 +55,7 @@ router.get('/project/:id/status', async (req: Request, res: Response) => {
 });
 
 // PUT /api/workflow/project/:id/status - Update project status
-router.put('/project/:id/status', async (req: Request, res: Response) => {
+router.put('/project/:id/status', hasProjectRole('id', 'project_manager'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -107,7 +108,7 @@ router.put('/project/:id/status', async (req: Request, res: Response) => {
 });
 
 // POST /api/workflow/project/:id/confirm-all - Mark all segments as confirmed
-router.post('/project/:id/confirm-all', async (req: Request, res: Response) => {
+router.post('/project/:id/confirm-all', hasProjectRole('id', 'project_manager', 'translator'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -183,9 +184,24 @@ router.post('/segment/:id/status', async (req: Request, res: Response) => {
       });
     }
 
+    // Check permissions based on status
+    if (status === 'reviewed') {
+      // Only reviewers can mark as reviewed
+      const userRoles = req.user?.roles.map(r => r.role) || [];
+      if (!userRoles.some(r => ['admin', 'project_manager', 'reviewer'].includes(r))) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Only reviewers can mark segments as reviewed',
+        });
+      }
+    }
+
     const { data, error } = await supabase
       .from('segments')
-      .update({ status })
+      .update({ 
+        status,
+        reviewed_by: status === 'reviewed' ? req.user?.id : undefined,
+      })
       .eq('id', id)
       .select()
       .single();

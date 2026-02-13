@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
+import { RoleSwitcher } from "./RoleSwitcher";
 import { Bell, Search } from "lucide-react";
 
 export default function AppLayout() {
@@ -23,6 +24,7 @@ export default function AppLayout() {
                 <Bell className="w-5 h-5 text-muted-foreground" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
               </button>
+              <RoleSwitcher />
             </div>
           </div>
         </header>

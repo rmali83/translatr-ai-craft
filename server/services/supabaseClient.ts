@@ -38,6 +38,9 @@ export interface Segment {
   source_text: string;
   target_text: string | null;
   status: string;
+  quality_score?: number | null;
+  quality_violations?: string[] | null;
+  quality_suggestions?: string[] | null;
   created_at: string;
 }
 
@@ -47,6 +50,7 @@ export interface TranslationMemory {
   target_text: string;
   source_lang: string;
   target_lang: string;
+  quality_score?: number | null;
   created_at: string;
 }
 
