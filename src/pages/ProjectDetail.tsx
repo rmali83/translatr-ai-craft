@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Loader2, CheckCheck, Filter } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, CheckCheck, Filter, Download, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +30,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { api, type Project, type Segment as ApiSegment, type GlossaryTerm } from '@/services/api';
 import { SegmentRow } from '@/components/SegmentRow';
+import { FileUploadDialog } from '@/components/FileUploadDialog';
+import { downloadJSON, downloadCSV } from '@/utils/fileExporter';
+import type { ParsedSegment } from '@/utils/fileParser';
 
 interface Segment extends Omit<ApiSegment, 'status'> {
   status: 'draft' | 'confirmed' | 'reviewed';
@@ -54,6 +63,7 @@ export default function ProjectDetail() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [workflowStatus, setWorkflowStatus] = useState<any>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -230,6 +240,63 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleFileUpload = async (parsedSegments: ParsedSegment[]) => {
+    if (!id) return;
+
+    try {
+      // Create segments in backend
+      const newSegments = await Promise.all(
+        parsedSegments.map(segment =>
+          api.createSegment({
+            project_id: id,
+            source_text: segment.source_text,
+            target_text: segment.target_text || null,
+            status: 'draft',
+          })
+        )
+      );
+
+      setSegments([...segments, ...newSegments.map(s => ({ ...s, status: 'draft' as const }))]);
+
+      toast({
+        title: 'Success',
+        description: `Imported ${parsedSegments.length} segments from file`,
+      });
+
+      await loadProjectData();
+    } catch (error) {
+      throw new Error('Failed to import segments');
+    }
+  };
+
+  const handleExport = (format: 'json' | 'csv') => {
+    if (!project || segments.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'No segments to export',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const exportSegments = segments.map(s => ({
+      source_text: s.source_text,
+      target_text: s.target_text,
+      status: s.status,
+    }));
+
+    if (format === 'json') {
+      downloadJSON(exportSegments, project.name);
+    } else {
+      downloadCSV(exportSegments, project.name);
+    }
+
+    toast({
+      title: 'Success',
+      description: `Exported ${segments.length} segments as ${format.toUpperCase()}`,
+    });
+  };
+
   const handleTranslate = async (segmentId: string) => {
     const segment = segments.find(s => s.id === segmentId);
     if (!segment || !project) return;
@@ -370,9 +437,29 @@ export default function ProjectDetail() {
               ))}
             </SelectContent>
           </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="w-4 h-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                Export as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                Export as CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={() => setShowFileUpload(true)} variant="outline" className="gap-2">
+            <FileUp className="w-4 h-4" />
+            Import File
+          </Button>
           <Button onClick={() => setShowUpload(!showUpload)} className="gap-2">
             <Upload className="w-4 h-4" />
-            Upload Text
+            Add Text
           </Button>
         </div>
       </div>
@@ -421,7 +508,7 @@ export default function ProjectDetail() {
       {/* Upload Text Area */}
       {showUpload && (
         <div className="bg-card rounded-xl border border-border p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Upload Source Text</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Add Source Text</h3>
           <Textarea
             value={sourceText}
             onChange={(e) => setSourceText(e.target.value)}
@@ -542,6 +629,13 @@ export default function ProjectDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* File Upload Dialog */}
+      <FileUploadDialog
+        open={showFileUpload}
+        onOpenChange={setShowFileUpload}
+        onUpload={handleFileUpload}
+      />
     </div>
   );
 }
