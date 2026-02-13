@@ -1,4 +1,4 @@
-### Test Translation API with TM Integration
+### Test Translation API with TM Integration and Glossary Support
 ### Use REST Client extension in VS Code or similar tool
 
 ### 1. First translation (will use AI and save to TM)
@@ -20,7 +20,8 @@ Content-Type: application/json
 #     "source_lang": "EN",
 #     "target_lang": "FR",
 #     "source": "AI",
-#     "tm_id": "uuid-here"
+#     "tm_id": "uuid-here",
+#     "glossary_terms_used": 0
 #   }
 # }
 
@@ -51,7 +52,60 @@ Content-Type: application/json
 
 ###
 
-### 3. Translation with project_id (creates segment)
+### 3. Add glossary terms first
+POST http://localhost:5000/api/glossary
+Content-Type: application/json
+
+{
+  "source_term": "Dashboard",
+  "target_term": "Tableau de bord",
+  "language_pair": "EN-FR",
+  "description": "Main application dashboard"
+}
+
+###
+
+POST http://localhost:5000/api/glossary
+Content-Type: application/json
+
+{
+  "source_term": "Settings",
+  "target_term": "Paramètres",
+  "language_pair": "EN-FR",
+  "description": "Application settings"
+}
+
+###
+
+### 4. Translation with glossary terms (AI will use glossary)
+POST http://localhost:5000/api/translate
+Content-Type: application/json
+
+{
+  "source_text": "Go to Dashboard and open Settings",
+  "source_lang": "EN",
+  "target_lang": "FR",
+  "use_glossary": true
+}
+
+### Expected: AI will enforce glossary terms in translation
+
+###
+
+### 5. Translation without glossary
+POST http://localhost:5000/api/translate
+Content-Type: application/json
+
+{
+  "source_text": "Go to Dashboard and open Settings",
+  "source_lang": "EN",
+  "target_lang": "FR",
+  "use_glossary": false
+}
+
+###
+
+### 6. Translation with project_id (creates segment)
 POST http://localhost:5000/api/translate
 Content-Type: application/json
 
@@ -64,7 +118,7 @@ Content-Type: application/json
 
 ###
 
-### 4. Batch translation
+### 7. Batch translation with glossary
 POST http://localhost:5000/api/translate/batch
 Content-Type: application/json
 
@@ -72,33 +126,30 @@ Content-Type: application/json
   "texts": [
     "Good morning",
     "Good afternoon",
-    "Good evening"
+    "Good evening",
+    "Open Dashboard",
+    "Change Settings"
   ],
   "source_lang": "EN",
-  "target_lang": "FR"
+  "target_lang": "FR",
+  "use_glossary": true
 }
 
 ### Expected Response:
 # {
 #   "success": true,
 #   "data": {
-#     "results": [
-#       {
-#         "source_text": "Good morning",
-#         "translated_text": "...",
-#         "source": "AI" or "TM"
-#       },
-#       ...
-#     ],
-#     "total": 3,
+#     "results": [...],
+#     "total": 5,
 #     "tm_matches": 0,
-#     "ai_translations": 3
+#     "ai_translations": 5,
+#     "glossary_terms_used": 2
 #   }
 # }
 
 ###
 
-### 5. Language detection
+### 8. Language detection
 POST http://localhost:5000/api/translate/detect
 Content-Type: application/json
 
@@ -108,10 +159,43 @@ Content-Type: application/json
 
 ###
 
-### 6. Check translation memory
+### 9. Check translation memory
 GET http://localhost:5000/api/tm?source_lang=EN&target_lang=FR
 
 ###
 
-### 7. Search translation memory
+### 10. Search translation memory
 GET http://localhost:5000/api/tm/search?text=Hello&source_lang=EN&target_lang=FR
+
+###
+
+### 11. Get glossary terms
+GET http://localhost:5000/api/glossary?language_pair=EN-FR
+
+###
+
+### 12. Test with OpenAI (set AI_PROVIDER=openai in .env)
+# Make sure to set OPENAI_API_KEY in .env first
+POST http://localhost:5000/api/translate
+Content-Type: application/json
+
+{
+  "source_text": "The quick brown fox jumps over the lazy dog",
+  "source_lang": "English",
+  "target_lang": "French",
+  "use_glossary": false
+}
+
+###
+
+### 13. Test with Anthropic (set AI_PROVIDER=anthropic in .env)
+# Make sure to set ANTHROPIC_API_KEY in .env first
+POST http://localhost:5000/api/translate
+Content-Type: application/json
+
+{
+  "source_text": "The quick brown fox jumps over the lazy dog",
+  "source_lang": "English",
+  "target_lang": "Spanish",
+  "use_glossary": false
+}

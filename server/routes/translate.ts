@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { translateText, detectLanguage } from '../services/aiService';
+import { translateWithAI, GlossaryTerm, detectLanguage } from '../services/aiService';
 import { supabase } from '../services/supabaseClient';
 
 const router = Router();
@@ -7,7 +7,7 @@ const router = Router();
 // POST /api/translate
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { source_text, source_lang, target_lang, project_id } = req.body;
+    const { source_text, source_lang, target_lang, project_id, use_glossary = true } = req.body;
 
     // Validation
     if (!source_text || !target_lang) {
@@ -56,11 +56,36 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Step 3: No TM match, use AI translation
-    console.log(`✗ No TM match found, using AI translation`);
-    const translatedText = await translateText(source_text, source_lang, target_lang);
+    // Step 3: Fetch glossary terms if enabled
+    let glossaryTerms: GlossaryTerm[] = [];
+    
+    if (use_glossary && source_lang && target_lang) {
+      const languagePair = `${source_lang}-${target_lang}`;
+      console.log(`Fetching glossary terms for language pair: ${languagePair}`);
+      
+      const { data: glossaryData, error: glossaryError } = await supabase
+        .from('glossary_terms')
+        .select('source_term, target_term, description')
+        .eq('language_pair', languagePair);
 
-    // Step 4: Save AI translation to translation memory
+      if (glossaryError) {
+        console.error('Glossary lookup error:', glossaryError);
+      } else if (glossaryData && glossaryData.length > 0) {
+        glossaryTerms = glossaryData;
+        console.log(`✓ Found ${glossaryTerms.length} glossary terms`);
+      }
+    }
+
+    // Step 4: No TM match, use AI translation with glossary
+    console.log(`✗ No TM match found, using AI translation`);
+    const translatedText = await translateWithAI(
+      source_text,
+      source_lang || 'auto',
+      target_lang,
+      glossaryTerms.length > 0 ? glossaryTerms : undefined
+    );
+
+    // Step 5: Save AI translation to translation memory
     const { data: newTmEntry, error: insertError } = await supabase
       .from('translation_memory')
       .insert([
@@ -81,7 +106,7 @@ router.post('/', async (req: Request, res: Response) => {
       console.log(`✓ Saved to TM with ID: ${newTmEntry.id}`);
     }
 
-    // Step 5: If project_id provided, optionally create/update segment
+    // Step 6: If project_id provided, optionally create/update segment
     if (project_id) {
       const { error: segmentError } = await supabase
         .from('segments')
@@ -100,7 +125,7 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // Step 6: Return AI translation result
+    // Step 7: Return AI translation result
     res.status(200).json({
       success: true,
       data: {
@@ -110,6 +135,7 @@ router.post('/', async (req: Request, res: Response) => {
         target_lang,
         source: 'AI',
         tm_id: newTmEntry?.id,
+        glossary_terms_used: glossaryTerms.length,
       },
     });
   } catch (error) {
@@ -124,13 +150,28 @@ router.post('/', async (req: Request, res: Response) => {
 // POST /api/translate/batch - Batch translation with TM lookup
 router.post('/batch', async (req: Request, res: Response) => {
   try {
-    const { texts, source_lang, target_lang, project_id } = req.body;
+    const { texts, source_lang, target_lang, project_id, use_glossary = true } = req.body;
 
     if (!texts || !Array.isArray(texts) || texts.length === 0 || !target_lang) {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'texts (array) and target_lang are required',
       });
+    }
+
+    // Fetch glossary terms once for all translations
+    let glossaryTerms: GlossaryTerm[] = [];
+    
+    if (use_glossary && source_lang && target_lang) {
+      const languagePair = `${source_lang}-${target_lang}`;
+      const { data: glossaryData } = await supabase
+        .from('glossary_terms')
+        .select('source_term, target_term, description')
+        .eq('language_pair', languagePair);
+
+      if (glossaryData && glossaryData.length > 0) {
+        glossaryTerms = glossaryData;
+      }
     }
 
     const results = [];
@@ -157,8 +198,13 @@ router.post('/batch', async (req: Request, res: Response) => {
           source: 'TM',
         });
       } else {
-        // Use AI translation
-        const translatedText = await translateText(text, source_lang, target_lang);
+        // Use AI translation with glossary
+        const translatedText = await translateWithAI(
+          text,
+          source_lang || 'auto',
+          target_lang,
+          glossaryTerms.length > 0 ? glossaryTerms : undefined
+        );
 
         // Save to TM
         await supabase.from('translation_memory').insert([
@@ -185,6 +231,7 @@ router.post('/batch', async (req: Request, res: Response) => {
         total: results.length,
         tm_matches: results.filter((r) => r.source === 'TM').length,
         ai_translations: results.filter((r) => r.source === 'AI').length,
+        glossary_terms_used: glossaryTerms.length,
       },
     });
   } catch (error) {
