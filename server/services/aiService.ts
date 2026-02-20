@@ -200,27 +200,487 @@ class AnthropicProvider implements AIProvider {
 class MockProvider implements AIProvider {
   async translate(prompt: string): Promise<string> {
     // Extract target language from prompt
-    const targetLangMatch = prompt.match(/to ([A-Z][a-z]+)/);
-    const targetLang = targetLangMatch ? targetLangMatch[1] : 'Unknown';
-    
+    const targetLangMatch = prompt.match(/to ([A-Za-z]+)/i);
+    const targetLang = targetLangMatch ? targetLangMatch[1].toLowerCase() : 'unknown';
+
     // Extract source text from prompt
     const textMatch = prompt.match(/Text:\s*(.+)$/s);
     const sourceText = textMatch ? textMatch[1].trim() : 'text';
-    
-    return `[Translated to ${targetLang}] ${sourceText}`;
+
+    console.log(`🔍 Mock translation - Target: "${targetLang}", Source: "${sourceText}"`);
+
+    // Provide better mock translations for common languages
+    const mockTranslations: { [key: string]: { [key: string]: string } } = {
+      'urdu': {
+        // Basic greetings and common phrases
+        'Hello World': 'ہیلو ورلڈ',
+        'This is test': 'یہ ٹیسٹ ہے',
+        'Hello World, This is test': 'ہیلو ورلڈ، یہ ٹیسٹ ہے',
+        'Welcome': 'خوش آمدید',
+        'Thank you': 'شکریہ',
+        'Good morning': 'صبح بخیر',
+        'Good evening': 'شام بخیر',
+        'How are you?': 'آپ کیسے ہیں؟',
+        'What is your name?': 'آپ کا نام کیا ہے؟',
+        'I am fine': 'میں ٹھیک ہوں',
+        'Please': 'براہ کرم',
+        'Sorry': 'معذرت',
+        'Excuse me': 'معاف کریں',
+        
+        // Business and location terms
+        'ENGLISH': 'انگریزی',
+        'Are You Interested in a Profitable Diesel Generator Business opportunity?': 'کیا آپ منافع بخش ڈیزل جنریٹر کاروباری موقع میں دلچسپی رکھتے ہیں؟',
+        'Apply Now!': 'ابھی درخواست دیں!',
+        'TAFE Power Distributor Opportunities in (Country Name)': 'TAFE پاور ڈسٹری بیوٹر کے مواقع (ملک کا نام)',
+        'Looking for a high-growth business opportunity?': 'کیا آپ تیزی سے بڑھنے والے کاروباری موقع کی تلاش میں ہیں؟',
+        'Become a TAFE Power distributor in (Country Name) and offer your customers industry-leading power solutions and exceptional support. Leverage our brand reputation and build a thriving business.': 'TAFE پاور ڈسٹری بیوٹر بنیں (ملک کا نام) میں اور اپنے کسٹمرز کو صنعت کی بہترین پاور سلوشنز اور بہترین سپورٹ فراہم کریں۔ ہماری برانڈ کی ساکھ سے فائدہ اٹھائیں اور ایک کامیاب کاروبار بنائیں۔',
+        'Business opportunity': 'کاروباری موقع',
+        'Diesel Generator': 'ڈیزل جنریٹر',
+        'Power Distributor': 'پاور ڈسٹری بیوٹر',
+        'Apply': 'درخواست دیں',
+        'Opportunities': 'مواقع',
+        'Profitable': 'منافع بخش',
+        'High-growth': 'تیزی سے بڑھنے والا',
+        'City': 'شہر',
+        'Country': 'ملک',
+        'State': 'ریاست',
+        'Province': 'صوبہ',
+        'Region': 'علاقہ',
+        'Area': 'علاقہ',
+        'Location': 'مقام',
+        'Address': 'پتہ',
+        'Email address': 'ای میل ایڈریس',
+        'Phone number': 'فون نمبر',
+        'Contact number': 'رابطہ نمبر',
+        'Mobile': 'موبائل',
+        'Telephone': 'ٹیلی فون',
+        'Fax': 'فیکس',
+        'Website': 'ویب سائٹ',
+        'Social media': 'سوشل میڈیا',
+        'Facebook': 'فیس بک',
+        'Twitter': 'ٹویٹر',
+        'LinkedIn': 'لنکڈ ان',
+        'Instagram': 'انسٹاگرام',
+        'YouTube': 'یوٹیوب',
+        'WhatsApp': 'واٹس ایپ',
+        'Telegram': 'ٹیلیگرام',
+        'Skype': 'اسکائپ',
+        'Zoom': 'زوم',
+        'Microsoft Teams': 'مائیکروسافٹ ٹیمز',
+        'Google Meet': 'گوگل میٹ',
+        'Video call': 'ویڈیو کال',
+        'Conference': 'کانفرنس',
+        'Meeting': 'میٹنگ',
+        'Appointment': 'اپائنٹمنٹ',
+        'Schedule': 'شیڈول',
+        'Calendar': 'کیلنڈر',
+        'Reminder': 'یاد دہانی',
+        'Notification': 'اطلاع',
+        'Alert': 'الرٹ',
+        'Message': 'پیغام',
+        'SMS': 'ایس ایم ایس',
+        'Text message': 'ٹیکسٹ میسج',
+        'Voice message': 'وائس میسج',
+        'Audio': 'آڈیو',
+        'Video': 'ویڈیو',
+        'Image': 'تصویر',
+        'Photo': 'فوٹو',
+        'Picture': 'تصویر',
+        'Document': 'دستاویز',
+        'File': 'فائل',
+        'Folder': 'فولڈر',
+        'Directory': 'ڈائرکٹری',
+        'Path': 'پاتھ',
+        'Link': 'لنک',
+        'URL': 'یو آر ایل',
+        'Hyperlink': 'ہائپر لنک',
+        'Bookmark': 'بک مارک',
+        'Favorite': 'پسندیدہ',
+        'Like': 'پسند',
+        'Share': 'شیئر',
+        'Comment': 'تبصرہ',
+        'Review': 'جائزہ',
+        'Rating': 'ریٹنگ',
+        'Feedback': 'فیڈ بیک',
+        'Survey': 'سروے',
+        'Poll': 'پول',
+        'Vote': 'ووٹ',
+        'Election': 'انتخابات',
+        'Campaign': 'مہم',
+        'Advertisement': 'اشتہار',
+        'Marketing': 'مارکیٹنگ',
+        'Promotion': 'پروموشن',
+        'Discount': 'ڈسکاؤنٹ',
+        'Offer': 'آفر',
+        'Deal': 'ڈیل',
+        'Sale': 'سیل',
+        'Purchase': 'خریداری',
+        'Buy': 'خریدیں',
+        'Sell': 'بیچیں',
+        'Trade': 'تجارت',
+        'Business': 'کاروبار',
+        'Commerce': 'تجارت',
+        'Industry': 'صنعت',
+        'Manufacturing': 'مینوفیکچرنگ',
+        'Production': 'پیداوار',
+        'Factory': 'فیکٹری',
+        'Plant': 'پلانٹ',
+        'Facility': 'سہولت',
+        'Equipment': 'آلات',
+        'Machinery': 'مشینری',
+        'Technology': 'ٹیکنالوجی',
+        'Innovation': 'جدت',
+        'Research': 'تحقیق',
+        'Development': 'ترقی',
+        'Engineering': 'انجینئرنگ',
+        'Design': 'ڈیزائن',
+        'Architecture': 'فن تعمیر',
+        'Construction': 'تعمیر',
+        'Building': 'عمارت',
+        'Structure': 'ڈھانچہ',
+        'Infrastructure': 'بنیادی ڈھانچہ',
+        'Network': 'نیٹ ورک',
+        'System': 'سسٹم',
+        'Platform': 'پلیٹ فارم',
+        'Framework': 'فریم ورک',
+        'Software': 'سافٹ ویئر',
+        'Hardware': 'ہارڈ ویئر',
+        'Computer': 'کمپیوٹر',
+        'Laptop': 'لیپ ٹاپ',
+        'Desktop': 'ڈیسک ٹاپ',
+        'Mobile phone': 'موبائل فون',
+        'Smartphone': 'اسمارٹ فون',
+        'Tablet': 'ٹیبلٹ',
+        'Device': 'ڈیوائس',
+        'Gadget': 'گیجٹ',
+        'Tool': 'ٹول',
+        'Instrument': 'آلہ',
+        'Machine': 'مشین',
+        'Robot': 'روبوٹ',
+        'Automation': 'آٹومیشن',
+        'Artificial Intelligence': 'مصنوعی ذہانت',
+        'AI': 'اے آئی',
+        'Machine Learning': 'مشین لرننگ',
+        'Deep Learning': 'ڈیپ لرننگ',
+        'Neural Network': 'نیورل نیٹ ورک',
+        'Algorithm': 'الگورتھم',
+        'Programming': 'پروگرامنگ',
+        'Coding': 'کوڈنگ',
+        'Developer': 'ڈیولپر',
+        'Programmer': 'پروگرامر',
+        'Engineer': 'انجینئر',
+        'Technician': 'ٹیکنیشن',
+        'Specialist': 'ماہر',
+        'Expert': 'ماہر',
+        'Professional': 'پیشہ ور',
+        'Consultant': 'مشیر',
+        'Advisor': 'مشیر',
+        'Manager': 'منیجر',
+        'Director': 'ڈائریکٹر',
+        'CEO': 'سی ای او',
+        'President': 'صدر',
+        'Chairman': 'چیئرمین',
+        'Board': 'بورڈ',
+        'Committee': 'کمیٹی',
+        'Team': 'ٹیم',
+        'Group': 'گروپ',
+        'Department': 'شعبہ',
+        'Division': 'ڈویژن',
+        'Section': 'سیکشن',
+        'Unit': 'یونٹ',
+        'Branch': 'برانچ',
+        'Office': 'دفتر',
+        'Headquarters': 'ہیڈ کوارٹر',
+        'Subsidiary': 'ذیلی کمپنی',
+        'Partner': 'پارٹنر',
+        'Client': 'کلائنٹ',
+        'Customer': 'کسٹمر',
+        'Consumer': 'صارف',
+        'User': 'صارف',
+        'Member': 'ممبر',
+        'Subscriber': 'سبسکرائبر',
+        'Follower': 'فالوور',
+        'Fan': 'فین',
+        'Supporter': 'حامی',
+        'Sponsor': 'اسپانسر',
+        'Investor': 'سرمایہ کار',
+        'Shareholder': 'شیئر ہولڈر',
+        'Stakeholder': 'اسٹیک ہولڈر',
+        
+        // Common words and phrases (no duplicates)
+        'Hello': 'ہیلو',
+        'World': 'دنیا',
+        'Test': 'ٹیسٹ',
+        'Testing': 'ٹیسٹنگ',
+        'Company': 'کمپنی',
+        'Service': 'خدمات',
+        'Product': 'پروڈکٹ',
+        'Quality': 'معیار',
+        'Support': 'سپورٹ',
+        'Contact': 'رابطہ',
+        'Information': 'معلومات',
+        'Email': 'ای میل',
+        'Phone': 'فون',
+        'Name': 'نام',
+        'Price': 'قیمت',
+        'Order': 'آرڈر',
+        'Delivery': 'ڈیلیوری',
+        'Payment': 'ادائیگی',
+        'Account': 'اکاؤنٹ',
+        'Login': 'لاگ ان',
+        'Register': 'رجسٹر',
+        'Submit': 'جمع کریں',
+        'Cancel': 'منسوخ',
+        'Save': 'محفوظ کریں',
+        'Delete': 'ڈیلیٹ',
+        'Edit': 'ایڈٹ',
+        'Update': 'اپ ڈیٹ',
+        'Search': 'تلاش',
+        'Find': 'تلاش کریں',
+        'Help': 'مدد',
+        'About': 'کے بارے میں',
+        'Home': 'ہوم',
+        'Page': 'صفحہ',
+        'Menu': 'مینو',
+        'Settings': 'سیٹنگز',
+        'Profile': 'پروفائل',
+        'Dashboard': 'ڈیش بورڈ',
+        'Reports': 'رپورٹس',
+        'Analytics': 'تجزیات',
+        'Statistics': 'شماریات',
+        'Data': 'ڈیٹا',
+        'Download': 'ڈاؤن لوڈ',
+        'Upload': 'اپ لوڈ',
+        'Import': 'امپورٹ',
+        'Export': 'ایکسپورٹ',
+        'Print': 'پرنٹ',
+        'Copy': 'کاپی',
+        'Paste': 'پیسٹ',
+        'Cut': 'کٹ',
+        'Undo': 'واپس',
+        'Redo': 'دوبارہ',
+        'Yes': 'ہاں',
+        'No': 'نہیں',
+        'OK': 'ٹھیک ہے',
+        'Close': 'بند کریں',
+        'Open': 'کھولیں',
+        'New': 'نیا',
+        'Create': 'بنائیں',
+        'Add': 'شامل کریں',
+        'Remove': 'ہٹائیں',
+        'Select': 'منتخب کریں',
+        'Choose': 'انتخاب کریں',
+        'Options': 'اختیارات',
+        'Tools': 'ٹولز',
+        'Features': 'خصوصیات',
+        'Benefits': 'فوائد',
+        'Advantages': 'فوائد',
+        'Solutions': 'حل',
+        'Services': 'خدمات',
+        'Products': 'پروڈکٹس',
+        'Categories': 'کیٹگریز',
+        'Items': 'اشیاء',
+        'List': 'فہرست',
+        'Table': 'جدول',
+        'Chart': 'چارٹ',
+        'Graph': 'گراف',
+        'Content': 'مواد',
+        'Article': 'مضمون',
+        'Blog': 'بلاگ',
+        'News': 'خبریں',
+        'Events': 'واقعات',
+        'Date': 'تاریخ',
+        'Time': 'وقت',
+        'Map': 'نقشہ',
+        'Direction': 'سمت',
+        'Distance': 'فاصلہ',
+        'Speed': 'رفتار',
+        'Size': 'سائز',
+        'Weight': 'وزن',
+        'Height': 'اونچائی',
+        'Width': 'چوڑائی',
+        'Length': 'لمبائی',
+        'Color': 'رنگ',
+        'Style': 'انداز',
+        'Layout': 'لے آؤٹ',
+        'Format': 'فارمیٹ',
+        'Type': 'قسم',
+        'Kind': 'نوع',
+        'Model': 'ماڈل',
+        'Version': 'ورژن',
+        'Number': 'نمبر',
+        'Code': 'کوڈ',
+        'ID': 'آئی ڈی',
+        'Key': 'کلید',
+        'Value': 'قدر',
+        'Amount': 'مقدار',
+        'Total': 'کل',
+        'Sum': 'مجموعہ',
+        'Average': 'اوسط',
+        'Maximum': 'زیادہ سے زیادہ',
+        'Minimum': 'کم سے کم',
+        'First': 'پہلا',
+        'Last': 'آخری',
+        'Next': 'اگلا',
+        'Previous': 'پچھلا',
+        'Start': 'شروع',
+        'End': 'اختتام',
+        'Begin': 'شروع کریں',
+        'Finish': 'ختم کریں',
+        'Complete': 'مکمل',
+        'Done': 'ہو گیا',
+        'Ready': 'تیار',
+        'Available': 'دستیاب',
+        'Online': 'آن لائن',
+        'Offline': 'آف لائن',
+        'Active': 'فعال',
+        'Inactive': 'غیر فعال',
+        'Enabled': 'فعال',
+        'Disabled': 'غیر فعال',
+        'Public': 'عوامی',
+        'Private': 'نجی',
+        'Secure': 'محفوظ',
+        'Safe': 'محفوظ',
+        'Protected': 'محفوظ',
+        'Free': 'مفت',
+        'Premium': 'پریمیم',
+        'Basic': 'بنیادی',
+        'Advanced': 'ایڈوانس',
+        'Enterprise': 'انٹرپرائز',
+        'Standard': 'معیاری',
+        'Custom': 'کسٹم',
+        'Special': 'خاص',
+        'Limited': 'محدود',
+        'Unlimited': 'لامحدود',
+        'Full': 'مکمل',
+        'Partial': 'جزوی',
+        'Empty': 'خالی',
+        'Loading': 'لوڈ ہو رہا ہے',
+        'Processing': 'پروسیسنگ',
+        'Connecting': 'کنکٹ ہو رہا ہے',
+        'Connected': 'کنکٹ ہو گیا',
+        'Disconnected': 'منقطع',
+        'Error': 'خرابی',
+        'Warning': 'انتباہ',
+        'Success': 'کامیابی',
+        'Failed': 'ناکام',
+        'Completed': 'مکمل',
+        'Pending': 'زیر التواء',
+        'Approved': 'منظور',
+        'Rejected': 'مسترد',
+        'Cancelled': 'منسوخ',
+        'Confirmed': 'تصدیق شدہ',
+        'Verified': 'تصدیق شدہ',
+        'Valid': 'درست',
+        'Invalid': 'غلط',
+        'Required': 'ضروری',
+        'Optional': 'اختیاری',
+        'Recommended': 'تجویز کردہ',
+        'Popular': 'مقبول',
+        'Featured': 'نمایاں',
+        'Latest': 'تازہ ترین',
+        'Recent': 'حالیہ',
+        'Old': 'پرانا',
+        'Archive': 'آرکائیو'
+      },
+      'spanish': {
+        'Hello World': 'Hola Mundo',
+        'This is test': 'Esta es una prueba',
+        'Hello World, This is test': 'Hola Mundo, Esta es una prueba',
+        'Welcome': 'Bienvenido',
+        'Thank you': 'Gracias',
+        'Good morning': 'Buenos días',
+        'Good evening': 'Buenas tardes',
+        'How are you?': '¿Cómo estás?',
+        'What is your name?': '¿Cómo te llamas?',
+        'I am fine': 'Estoy bien',
+        'Please': 'Por favor',
+        'Sorry': 'Lo siento',
+        'Excuse me': 'Disculpe'
+      },
+      'french': {
+        'Hello World': 'Bonjour le monde',
+        'This is test': 'Ceci est un test',
+        'Hello World, This is test': 'Bonjour le monde, Ceci est un test',
+        'Welcome': 'Bienvenue',
+        'Thank you': 'Merci',
+        'Good morning': 'Bonjour',
+        'Good evening': 'Bonsoir',
+        'How are you?': 'Comment allez-vous?',
+        'What is your name?': 'Comment vous appelez-vous?',
+        'I am fine': 'Je vais bien',
+        'Please': 'S\'il vous plaît',
+        'Sorry': 'Désolé',
+        'Excuse me': 'Excusez-moi'
+      }
+    };
+
+    // Check if we have a mock translation for this text and language
+    if (mockTranslations[targetLang] && mockTranslations[targetLang][sourceText]) {
+      const translation = mockTranslations[targetLang][sourceText];
+      console.log(`✅ Found translation: "${translation}"`);
+      return translation;
+    }
+
+    // Try to find partial matches for compound phrases
+    if (mockTranslations[targetLang]) {
+      const translations = mockTranslations[targetLang];
+      
+      // Check if any known phrase is contained in the source text
+      for (const [key, value] of Object.entries(translations)) {
+        if (sourceText.toLowerCase().includes(key.toLowerCase()) && key.length > 3) {
+          const partialTranslation = `${value} (${sourceText})`;
+          console.log(`🔍 Found partial match: "${key}" → "${value}"`);
+          return partialTranslation;
+        }
+      }
+      
+      // Try word-by-word translation for simple cases
+      const words = sourceText.split(/\s+/);
+      if (words.length <= 3) {
+        const translatedWords = words.map(word => {
+          const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
+          for (const [key, value] of Object.entries(translations)) {
+            if (key.toLowerCase() === cleanWord) {
+              return value;
+            }
+          }
+          return word; // Keep original if no translation found
+        });
+        
+        if (translatedWords.some((word, idx) => word !== words[idx])) {
+          const wordTranslation = translatedWords.join(' ');
+          console.log(`🔤 Word-by-word translation: "${wordTranslation}"`);
+          return wordTranslation;
+        }
+      }
+    }
+
+    // Enhanced fallback with better formatting
+    if (targetLang === 'urdu') {
+      // For Urdu, provide a more natural fallback
+      const fallback = `${sourceText} (اردو ترجمہ)`;
+      console.log(`⚠️ Using Urdu fallback: "${fallback}"`);
+      return fallback;
+    }
+
+    // Generic fallback for other languages
+    const fallback = `[Mock ${targetLang.charAt(0).toUpperCase() + targetLang.slice(1)} Translation] ${sourceText}`;
+    console.log(`⚠️ Using generic fallback: "${fallback}"`);
+    return fallback;
   }
 
   async evaluateQuality(prompt: string): Promise<string> {
     // Mock quality evaluation with random score
     const score = Math.floor(Math.random() * 30) + 70; // 70-100
     const hasViolations = score < 85;
-    
+
     const result = {
       score,
       terminology_violations: hasViolations ? ['Mock terminology violation detected'] : [],
       suggestions: hasViolations ? ['Consider reviewing the translation for accuracy'] : [],
     };
-    
+
     return JSON.stringify(result);
   }
 }
@@ -499,4 +959,3 @@ export async function translateWithQuality(
     quality,
   };
 }
-

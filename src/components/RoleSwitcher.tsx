@@ -1,4 +1,4 @@
-import { User, Shield, UserCog, Languages, Eye } from 'lucide-react';
+import { User, Shield, UserCog, Languages, Eye, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,7 +9,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ROLE_CONFIG = {
   admin: { label: 'Admin', icon: Shield, color: 'bg-red-500/15 text-red-500' },
@@ -18,15 +20,9 @@ const ROLE_CONFIG = {
   reviewer: { label: 'Reviewer', icon: Eye, color: 'bg-purple-500/15 text-purple-500' },
 };
 
-const TEST_USERS = [
-  { id: '00000000-0000-0000-0000-000000000001', name: 'Admin User', role: 'admin' },
-  { id: '00000000-0000-0000-0000-000000000002', name: 'Project Manager', role: 'project_manager' },
-  { id: '00000000-0000-0000-0000-000000000003', name: 'Translator', role: 'translator' },
-  { id: '00000000-0000-0000-0000-000000000004', name: 'Reviewer', role: 'reviewer' },
-];
-
 export function RoleSwitcher() {
-  const { user, loading, setUserId } = useAuth();
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -44,11 +40,30 @@ export function RoleSwitcher() {
   const roleConfig = ROLE_CONFIG[user.primary_role as keyof typeof ROLE_CONFIG] || ROLE_CONFIG.translator;
   const RoleIcon = roleConfig.icon;
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="gap-2">
-          <RoleIcon className="w-4 h-4" />
+          <Avatar className="w-6 h-6">
+            <AvatarImage src={user.avatar_url} alt={user.name} />
+            <AvatarFallback className="text-xs">
+              {getInitials(user.name)}
+            </AvatarFallback>
+          </Avatar>
           <span className="hidden sm:inline">{user.name}</span>
           <Badge className={roleConfig.color}>
             {roleConfig.label}
@@ -56,25 +71,22 @@ export function RoleSwitcher() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Switch User (Dev Mode)</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium">{user.name}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </div>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {TEST_USERS.map((testUser) => {
-          const config = ROLE_CONFIG[testUser.role as keyof typeof ROLE_CONFIG];
-          const Icon = config.icon;
-          return (
-            <DropdownMenuItem
-              key={testUser.id}
-              onClick={() => setUserId(testUser.id)}
-              className="gap-2"
-            >
-              <Icon className="w-4 h-4" />
-              <span className="flex-1">{testUser.name}</span>
-              {user.id === testUser.id && (
-                <Badge variant="secondary" className="text-xs">Current</Badge>
-              )}
-            </DropdownMenuItem>
-          );
-        })}
+        <DropdownMenuItem onClick={() => navigate('/settings')}>
+          <User className="w-4 h-4 mr-2" />
+          Profile Settings
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

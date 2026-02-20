@@ -1,0 +1,27 @@
+[
+  {
+    "source": "Welcome to our application",
+    "target": "",
+    "context": "App greeting"
+  },
+  {
+    "source": "Please enter your username",
+    "target": "",
+    "context": "Login form"
+  },
+  {
+    "source": "Password is required",
+    "target": "",
+    "context": "Validation message"
+  },
+  {
+    "source": "Login successful",
+    "target": "",
+    "context": "Success message"
+  },
+  {
+    "source": "Thank you for using our service",
+    "target": "",
+    "context": "Goodbye message"
+  }
+]

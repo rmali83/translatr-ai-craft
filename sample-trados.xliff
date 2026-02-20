@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file original="document.txt" source-language="en" target-language="ur" datatype="plaintext">
+    <header>
+      <tool tool-id="trados" tool-name="SDL Trados Studio" tool-version="2021"/>
+    </header>
+    <body>
+      <trans-unit id="1" approved="no">
+        <source>Welcome to our application</source>
+        <target></target>
+        <note>Application greeting message</note>
+      </trans-unit>
+      <trans-unit id="2" approved="no">
+        <source>Please enter your username and password</source>
+        <target></target>
+        <note>Login form instruction</note>
+      </trans-unit>
+      <trans-unit id="3" approved="no">
+        <source>Login successful</source>
+        <target></target>
+        <note>Success notification</note>
+      </trans-unit>
+      <trans-unit id="4" approved="no">
+        <source>Invalid credentials</source>
+        <target></target>
+        <note>Error message</note>
+      </trans-unit>
+      <trans-unit id="5" approved="no">
+        <source>Thank you for using our service</source>
+        <target></target>
+        <note>Farewell message</note>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

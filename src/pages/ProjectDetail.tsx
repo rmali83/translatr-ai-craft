@@ -356,18 +356,30 @@ export default function ProjectDetail() {
     const segment = segments.find(s => s.id === segmentId);
     if (!segment || !project) return;
 
+    console.log('🔄 Starting translation for segment:', segmentId);
+    console.log('📝 Source text:', segment.source_text);
+    console.log('🌍 Languages:', project.source_language, '→', project.target_language);
+
     setTranslatingSegments(prev => new Set(prev).add(segmentId));
 
     try {
-      const response = await api.translate({
+      const translateRequest = {
         source_text: segment.source_text,
         source_lang: project.source_language,
         target_lang: project.target_language,
         project_id: project.id,
         use_glossary: true,
-      });
+      };
+      
+      console.log('📤 Sending translation request:', translateRequest);
+      
+      const response = await api.translate(translateRequest);
+      
+      console.log('📥 Translation response:', response);
 
       if (response.success) {
+        console.log('✅ Translation successful:', response.data.translated_text);
+        
         setSegments(prev =>
           prev.map(s =>
             s.id === segmentId
@@ -393,6 +405,7 @@ export default function ProjectDetail() {
         });
       }
     } catch (error) {
+      console.error('❌ Translation error:', error);
       toast({
         title: 'Translation failed',
         description: 'Could not connect to translation service',
@@ -655,6 +668,7 @@ export default function ProjectDetail() {
               glossaryTerms={glossaryTerms}
               isTranslating={translatingSegments.has(segment.id)}
               isSaving={savingSegments.has(segment.id)}
+              targetLanguage={project?.target_language}
               onTranslate={() => handleTranslate(segment.id)}
               onSave={() => handleSaveSegment(segment.id)}
               onConfirm={() => handleConfirmSegment(segment.id)}

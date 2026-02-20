@@ -26,13 +26,32 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (selectedFile: File) => {
-    setFile(selectedFile);
+    setFile(null);
     setError(null);
     setPreviewSegments([]);
 
+    // Validate file type
+    const extension = selectedFile.name.split('.').pop()?.toLowerCase();
+    const supportedExtensions = ['json', 'csv', 'txt', 'xlsx', 'xls'];
+    
+    if (!supportedExtensions.includes(extension || '')) {
+      setError(`Unsupported file format: .${extension}. Please upload JSON, CSV, TXT, or Excel (XLSX/XLS) files.`);
+      return;
+    }
+
+    setFile(selectedFile);
+
     try {
-      const content = await readFileAsText(selectedFile);
-      const segments = await parseFile(selectedFile, content);
+      let segments: ParsedSegment[];
+      
+      // Handle binary files (Excel) differently
+      if (extension === 'xlsx' || extension === 'xls') {
+        segments = await parseFile(selectedFile);
+      } else {
+        // Handle text-based files
+        const content = await readFileAsText(selectedFile);
+        segments = await parseFile(selectedFile, content);
+      }
       
       // Show preview of first 5 segments
       setPreviewSegments(segments.slice(0, 5));
@@ -47,12 +66,8 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
     const droppedFile = e.dataTransfer.files[0];
     
     if (droppedFile) {
-      const extension = droppedFile.name.split('.').pop()?.toLowerCase();
-      if (['json', 'csv', 'txt'].includes(extension || '')) {
-        handleFileSelect(droppedFile);
-      } else {
-        setError('Unsupported file format. Please upload JSON, CSV, or TXT files.');
-      }
+      // Let handleFileSelect do the validation
+      handleFileSelect(droppedFile);
     }
   };
 
@@ -63,10 +78,20 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
       setUploading(true);
       setProgress(10);
 
-      const content = await readFileAsText(file);
-      setProgress(30);
-
-      const segments = await parseFile(file, content);
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      let segments: ParsedSegment[];
+      
+      // Handle binary files (Excel) differently
+      if (extension === 'xlsx' || extension === 'xls') {
+        setProgress(30);
+        segments = await parseFile(file);
+      } else {
+        // Handle text-based files
+        const content = await readFileAsText(file);
+        setProgress(30);
+        segments = await parseFile(file, content);
+      }
+      
       setProgress(50);
 
       await onUpload(segments);
@@ -103,7 +128,7 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
           <DialogDescription>
-            Upload JSON, CSV, or TXT files to import segments
+            Upload JSON, CSV, TXT, or Excel files to import segments
           </DialogDescription>
         </DialogHeader>
 
@@ -120,13 +145,15 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
               <p className="text-sm font-medium text-foreground mb-1">
                 Drop your file here or click to browse
               </p>
-              <p className="text-xs text-muted-foreground">
-                Supports JSON, CSV, and TXT files
+              <p className="text-xs text-muted-foreground mb-2">
+                Supports JSON, CSV, TXT, and Excel (XLSX/XLS) files
+              </p>
+              <p className="text-xs text-blue-600">
+                If you don't see your file type, try typing *.* in the filename field or change "All supported files" to "All files"
               </p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json,.csv,.txt"
                 onChange={(e) => {
                   const selectedFile = e.target.files?.[0];
                   if (selectedFile) handleFileSelect(selectedFile);

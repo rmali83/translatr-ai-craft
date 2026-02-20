@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>RTL Test</title>
+    <style>
+        .rtl { direction: rtl; text-align: right; }
+        .ltr { direction: ltr; text-align: left; }
+        .test-box { 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            margin: 10px 0; 
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RTL Language Test</h1>
+    
+    <h2>English (LTR)</h2>
+    <div class="test-box ltr">
+        Hello World, This is a test
+    </div>
+    
+    <h2>Urdu (RTL)</h2>
+    <div class="test-box rtl">
+        ہیلو ورلڈ، یہ ٹیسٹ ہے
+    </div>
+    
+    <h2>Arabic (RTL)</h2>
+    <div class="test-box rtl">
+        مرحبا بالعالم، هذا اختبار
+    </div>
+    
+    <h2>Mixed Content (Auto-detect)</h2>
+    <div class="test-box rtl">
+        Apply Now! → ابھی درخواست دیں!
+    </div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+source,target,context
+"Good morning","","Greeting"
+"How are you today?","","Question"
+"I am fine, thank you","","Response"
+"What is your name?","","Personal question"
+"My name is John","","Personal response"
+"Nice to meet you","","Polite expression"
+"Have a great day","","Farewell"

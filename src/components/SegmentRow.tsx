@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { useEffect, useState, useRef } from 'react';
 import type { GlossaryTerm } from '@/services/api';
+import { getTextDirectionStyles, autoDetectTextDirection } from '@/utils/rtlLanguages';
 import { highlightGlossaryTerms } from '@/utils/glossaryHighlight';
 
 interface SegmentRowProps {
@@ -24,6 +25,7 @@ interface SegmentRowProps {
   glossaryTerms: GlossaryTerm[];
   isTranslating: boolean;
   isSaving: boolean;
+  targetLanguage?: string;
   onTranslate: () => void;
   onSave: () => void;
   onConfirm: () => void;
@@ -35,6 +37,7 @@ export function SegmentRow({
   glossaryTerms,
   isTranslating,
   isSaving,
+  targetLanguage,
   onTranslate,
   onSave,
   onConfirm,
@@ -268,6 +271,7 @@ export function SegmentRow({
             onBlur={handleBlur}
             placeholder={isReviewerOnly ? "Read-only (Reviewer role)" : isLockedByOther ? `Locked by ${lockInfo?.userName}` : "Translation will appear here..."}
             className="min-h-[80px] mb-3 resize-none"
+            style={getTextDirectionStyles(targetLanguage || '')}
             disabled={!canEditSegment || isReviewerOnly || isLockedByOther}
           />
         </div>

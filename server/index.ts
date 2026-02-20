@@ -2,7 +2,8 @@ import express, { Application, Request, Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { authenticate, hasRole, hasProjectRole } from './middleware/rbac';
+import { authenticate as rbacAuthenticate, hasRole, hasProjectRole } from './middleware/rbac';
+import { authenticateUser } from './middleware/auth';
 import { socketService } from './services/socketService';
 import authRoutes from './routes/auth';
 import translateRoutes from './routes/translate';
@@ -44,7 +45,8 @@ app.use('/api/translate', translateRoutes);
 app.use('/api/tm', translationMemoryRoutes);
 app.use('/api/glossary', glossaryRoutes);
 
-// Protected routes - require authentication
+// Protected routes - require Supabase authentication (with RBAC fallback)
+const authenticate = process.env.USE_SUPABASE_AUTH === 'true' ? authenticateUser : rbacAuthenticate;
 app.use('/api/projects', authenticate, projectsRoutes);
 app.use('/api/segments', authenticate, segmentsRoutes);
 app.use('/api/workflow', authenticate, workflowRoutes);
@@ -62,7 +64,7 @@ httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔐 RBAC enabled - use x-user-id header for authentication`);
+  console.log(`🔐 Auth mode: ${process.env.USE_SUPABASE_AUTH === 'true' ? 'Supabase JWT' : 'RBAC (x-user-id)'}`);
   console.log(`🔌 WebSocket server initialized`);
 });
 

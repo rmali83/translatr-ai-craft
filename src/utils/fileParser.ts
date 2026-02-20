@@ -1,7 +1,9 @@
 /**
  * File Parser Utilities
- * Supports JSON, CSV, and TXT file formats
+ * Supports JSON, CSV, TXT, and Excel (XLSX/XLS) file formats
  */
+
+import * as XLSX from 'xlsx';
 
 export interface ParsedSegment {
   source_text: string;
@@ -151,9 +153,66 @@ export function parseTXT(content: string): ParsedSegment[] {
 }
 
 /**
+ * Parse Excel file (XLSX/XLS)
+ * Supports various Excel structures:
+ * - Column A: Source text, Column B: Target text, Column C: Context
+ * - First row can be headers
+ */
+export function parseExcel(file: File): Promise<ParsedSegment[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Get first worksheet
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert to JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        const segments: ParsedSegment[] = [];
+        let startRow = 0;
+        
+        // Check if first row contains headers
+        const firstRow = jsonData[0] as any[];
+        if (firstRow && firstRow.length > 0) {
+          const firstCell = String(firstRow[0]).toLowerCase();
+          if (firstCell.includes('source') || firstCell.includes('text') || firstCell.includes('original')) {
+            startRow = 1; // Skip header row
+          }
+        }
+        
+        // Process data rows
+        for (let i = startRow; i < jsonData.length; i++) {
+          const row = jsonData[i] as any[];
+          if (row && row.length > 0 && row[0]) {
+            segments.push({
+              source_text: String(row[0]).trim(),
+              target_text: row[1] ? String(row[1]).trim() : undefined,
+              context: row[2] ? String(row[2]).trim() : undefined,
+            });
+          }
+        }
+        
+        resolve(segments);
+      } catch (error) {
+        reject(new Error('Failed to parse Excel file: ' + (error as Error).message));
+      }
+    };
+    
+    reader.onerror = () => reject(new Error('Failed to read Excel file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
  * Parse file based on extension
  */
-export function parseFile(file: File, content: string): Promise<ParsedSegment[]> {
+export function parseFile(file: File, content?: string): Promise<ParsedSegment[]> {
   return new Promise((resolve, reject) => {
     const extension = file.name.split('.').pop()?.toLowerCase();
 
@@ -162,25 +221,41 @@ export function parseFile(file: File, content: string): Promise<ParsedSegment[]>
 
       switch (extension) {
         case 'json':
+          if (!content) {
+            reject(new Error('Content required for JSON files'));
+            return;
+          }
           segments = parseJSON(content);
+          resolve(segments);
           break;
+          
         case 'csv':
+          if (!content) {
+            reject(new Error('Content required for CSV files'));
+            return;
+          }
           segments = parseCSV(content);
+          resolve(segments);
           break;
+          
         case 'txt':
+          if (!content) {
+            reject(new Error('Content required for TXT files'));
+            return;
+          }
           segments = parseTXT(content);
+          resolve(segments);
           break;
+          
+        case 'xlsx':
+        case 'xls':
+          parseExcel(file).then(resolve).catch(reject);
+          break;
+          
         default:
-          reject(new Error(`Unsupported file format: ${extension}`));
+          reject(new Error(`Unsupported file format: ${extension}. Please use Excel (XLSX/XLS), JSON, CSV, or TXT files.`));
           return;
       }
-
-      if (segments.length === 0) {
-        reject(new Error('No valid segments found in file'));
-        return;
-      }
-
-      resolve(segments);
     } catch (error: any) {
       reject(new Error(error.message || 'Failed to parse file'));
     }

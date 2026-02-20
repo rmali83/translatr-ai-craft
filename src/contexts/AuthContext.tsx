@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api } from '@/services/api';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface UserRole {
   role: 'admin' | 'project_manager' | 'translator' | 'reviewer';
@@ -10,6 +11,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  avatar_url?: string;
   roles: UserRole[];
   primary_role: string;
 }
@@ -17,7 +19,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  setUserId: (userId: string) => void;
+  signOut: () => Promise<void>;
   hasRole: (role: string, projectId?: string) => boolean;
   canEdit: (projectId?: string) => boolean;
   canReview: () => boolean;
@@ -29,54 +31,109 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
 
   useEffect(() => {
-    // Load user ID from localStorage or use default
-    const savedUserId = localStorage.getItem('x-user-id') || '00000000-0000-0000-0000-000000000003'; // Default: translator
-    setCurrentUserId(savedUserId);
-    loadUser(savedUserId);
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUserProfile(session.user);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const loadUser = async (userId: string) => {
+  const loadUserProfile = async (authUser: SupabaseUser) => {
     try {
-      setLoading(true);
-      const userData = await api.getCurrentUser(userId);
-      setUser(userData);
+      // Get user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Get user roles
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role, project_id')
+        .eq('user_id', authUser.id);
+
+      if (rolesError) throw rolesError;
+
+      // Determine primary role (first global role or first role)
+      const globalRole = roles?.find(r => r.project_id === null);
+      const primaryRole = globalRole?.role || roles?.[0]?.role || 'translator';
+
+      setUser({
+        id: authUser.id,
+        email: profile.email,
+        name: profile.name,
+        avatar_url: profile.avatar_url,
+        roles: roles || [],
+        primary_role: primaryRole,
+      });
+
+      // Store user ID for API calls
+      localStorage.setItem('x-user-id', authUser.id);
     } catch (error) {
-      console.error('Failed to load user:', error);
-      setUser(null);
+      console.error('Error loading user profile:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const setUserId = (userId: string) => {
-    localStorage.setItem('x-user-id', userId);
-    setCurrentUserId(userId);
-    loadUser(userId);
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('x-user-id');
+    setUser(null);
   };
 
   const hasRole = (role: string, projectId?: string): boolean => {
     if (!user) return false;
-    
-    // Admin has all permissions
-    if (user.roles.some(r => r.role === 'admin')) return true;
-    
-    // Check for specific role
-    return user.roles.some(
-      r => r.role === role && (!projectId || r.project_id === projectId || r.project_id === null)
-    );
+
+    // Admin has access to everything
+    if (user.roles.some(r => r.role === 'admin' && r.project_id === null)) {
+      return true;
+    }
+
+    // Check specific role
+    if (projectId) {
+      return user.roles.some(
+        r => r.role === role && (r.project_id === projectId || r.project_id === null)
+      );
+    }
+
+    return user.roles.some(r => r.role === role);
   };
 
   const canEdit = (projectId?: string): boolean => {
     if (!user) return false;
-    return hasRole('admin') || hasRole('project_manager', projectId) || hasRole('translator', projectId);
+    return (
+      isAdmin() ||
+      hasRole('project_manager', projectId) ||
+      hasRole('translator', projectId)
+    );
   };
 
   const canReview = (): boolean => {
     if (!user) return false;
-    return hasRole('admin') || hasRole('project_manager') || hasRole('reviewer');
+    return isAdmin() || hasRole('reviewer');
   };
 
   const isAdmin = (): boolean => {
@@ -85,7 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUserId, hasRole, canEdit, canReview, isAdmin }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signOut,
+        hasRole,
+        canEdit,
+        canReview,
+        isAdmin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

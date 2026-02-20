@@ -1,0 +1,17 @@
+Hello World
+
+This is a test document for translation.
+
+We support multiple file formats including JSON, CSV, and TXT.
+
+Each paragraph will become a separate segment.
+
+You can upload files by dragging and dropping them into the upload area.
+
+The system will automatically parse the content and create translation segments.
+
+Quality evaluation will be performed on each translation.
+
+Real-time collaboration allows multiple translators to work together.
+
+Thank you for testing our CAT tool!
