@@ -60,8 +60,9 @@ app.use((req: Request, res: Response) => {
 });
 
 // Start server
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+httpServer.listen(Number(PORT), HOST, () => {
+  console.log(`🚀 Server is running on ${HOST}:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔐 Auth mode: ${process.env.USE_SUPABASE_AUTH === 'true' ? 'Supabase JWT' : 'RBAC (x-user-id)'}`);

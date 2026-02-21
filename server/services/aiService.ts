@@ -622,36 +622,53 @@ class MockProvider implements AIProvider {
       return translation;
     }
 
-    // Try to find partial matches for compound phrases
+    // Try word-by-word translation for better results
     if (mockTranslations[targetLang]) {
       const translations = mockTranslations[targetLang];
       
-      // Check if any known phrase is contained in the source text
-      for (const [key, value] of Object.entries(translations)) {
-        if (sourceText.toLowerCase().includes(key.toLowerCase()) && key.length > 3) {
-          const partialTranslation = `${value} (${sourceText})`;
-          console.log(`🔍 Found partial match: "${key}" → "${value}"`);
-          return partialTranslation;
+      // Split into words and translate each
+      const words = sourceText.split(/\s+/);
+      const translatedWords = words.map(word => {
+        // Clean the word (remove punctuation for matching)
+        const cleanWord = word.replace(/[^\w]/g, '');
+        const lowerCleanWord = cleanWord.toLowerCase();
+        
+        // Try exact match first
+        if (translations[cleanWord]) {
+          return translations[cleanWord];
         }
+        
+        // Try case-insensitive match
+        for (const [key, value] of Object.entries(translations)) {
+          if (key.toLowerCase() === lowerCleanWord) {
+            return value;
+          }
+        }
+        
+        // Keep original if no translation found
+        return word;
+      });
+      
+      // Check if we translated at least some words
+      const translationCount = translatedWords.filter((word, idx) => word !== words[idx]).length;
+      
+      if (translationCount > 0) {
+        const wordTranslation = translatedWords.join(' ');
+        console.log(`🔤 Word-by-word translation (${translationCount}/${words.length} words): "${wordTranslation}"`);
+        return wordTranslation;
       }
       
-      // Try word-by-word translation for simple cases
-      const words = sourceText.split(/\s+/);
-      if (words.length <= 3) {
-        const translatedWords = words.map(word => {
-          const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
-          for (const [key, value] of Object.entries(translations)) {
-            if (key.toLowerCase() === cleanWord) {
-              return value;
-            }
+      // Try to find the longest matching phrase
+      const sortedKeys = Object.keys(translations).sort((a, b) => b.length - a.length);
+      for (const key of sortedKeys) {
+        if (sourceText.toLowerCase().includes(key.toLowerCase()) && key.length > 3) {
+          // Replace the matched phrase in the source text
+          const regex = new RegExp(key, 'gi');
+          const partialTranslation = sourceText.replace(regex, translations[key]);
+          if (partialTranslation !== sourceText) {
+            console.log(`🔍 Found phrase match: "${key}" → "${translations[key]}"`);
+            return partialTranslation;
           }
-          return word; // Keep original if no translation found
-        });
-        
-        if (translatedWords.some((word, idx) => word !== words[idx])) {
-          const wordTranslation = translatedWords.join(' ');
-          console.log(`🔤 Word-by-word translation: "${wordTranslation}"`);
-          return wordTranslation;
         }
       }
     }
