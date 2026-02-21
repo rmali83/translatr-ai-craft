@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface SegmentLock {
   segmentId: string;
@@ -11,7 +12,7 @@ interface SegmentLock {
 }
 
 interface SocketContextType {
-  socket: Socket | null;
+  socket: RealtimeChannel | null;
   connected: boolean;
   joinProject: (projectId: string) => void;
   leaveProject: (projectId: string) => void;
@@ -27,11 +28,9 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-
 export function SocketProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
   const [connected, setConnected] = useState(false);
   const [segmentLocks, setSegmentLocks] = useState<Map<string, SegmentLock>>(new Map());
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -39,164 +38,169 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    // Socket.IO temporarily disabled - migrating to Supabase Realtime
-    console.log('Socket.IO disabled - using Supabase Realtime instead');
-    setConnected(false);
-    
-    // TODO: Implement Supabase Realtime for collaboration features
-    
-    /*
-    // Initialize socket connection
-    const newSocket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-    });
-
-    newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id);
-      setConnected(true);
-    });
-
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      setConnected(false);
-    });
-
-    // Listen for segment locks
-    newSocket.on('segment-locked', (data: SegmentLock) => {
-      console.log('Segment locked:', data);
-      setSegmentLocks(prev => new Map(prev).set(data.segmentId, data));
-    });
-
-    // Listen for segment unlocks
-    newSocket.on('segment-unlocked', (data: { segmentId: string }) => {
-      console.log('Segment unlocked:', data.segmentId);
-      setSegmentLocks(prev => {
-        const next = new Map(prev);
-        next.delete(data.segmentId);
-        return next;
-      });
-    });
-
-    // Listen for lock failures
-    newSocket.on('lock-failed', (data: { segmentId: string; lockedBy: string; message: string }) => {
-      console.log('Lock failed:', data);
-      // You can emit a custom event or use a toast notification here
-    });
-
-    // Listen for current locks when joining a project
-    newSocket.on('current-locks', (locks: SegmentLock[]) => {
-      console.log('Received current locks:', locks);
-      const locksMap = new Map<string, SegmentLock>();
-      locks.forEach(lock => locksMap.set(lock.segmentId, lock));
-      setSegmentLocks(locksMap);
-    });
-
-    // Listen for segment updates from other users
-    newSocket.on('segment-updated', (data: { segmentId: string; userId: string; targetText: string }) => {
-      // Emit custom event that components can listen to
-      window.dispatchEvent(new CustomEvent('segment-updated', { detail: data }));
-    });
-
-    // Listen for segment saves from other users
-    newSocket.on('segment-saved', (data: { segmentId: string; userId: string; targetText: string; status: string }) => {
-      // Emit custom event that components can listen to
-      window.dispatchEvent(new CustomEvent('segment-saved', { detail: data }));
-    });
-
-    // Listen for user joined
-    newSocket.on('user-joined', (data: { userId: string; userName: string }) => {
-      console.log('User joined:', data.userName);
-    });
-
-    // Listen for user left
-    newSocket.on('user-left', (data: { userId: string; userName: string }) => {
-      console.log('User left:', data.userName);
-    });
-
-    setSocket(newSocket);
+    console.log('✅ Supabase Realtime initialized');
+    setConnected(true);
 
     return () => {
-      newSocket.close();
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-    */
   }, [user]);
 
   const joinProject = (projectId: string) => {
-    if (socket && user) {
-      console.log('Joining project:', projectId);
-      socket.emit('join-project', {
-        projectId,
-        userId: user.id,
-        userName: user.name,
-      });
-      setCurrentProjectId(projectId);
+    if (!user) return;
+
+    // Leave previous project if any
+    if (channel) {
+      supabase.removeChannel(channel);
     }
+
+    console.log('🔌 Joining project:', projectId);
+
+    // Create new channel for this project
+    const newChannel = supabase.channel(`project:${projectId}`, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: user.id },
+      },
+    });
+
+    // Track presence (who's online)
+    newChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = newChannel.presenceState();
+        console.log('👥 Users online:', Object.keys(state).length);
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('👋 User joined:', key);
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('👋 User left:', key);
+      })
+      // Listen for segment locks
+      .on('broadcast', { event: 'segment-locked' }, ({ payload }) => {
+        console.log('🔒 Segment locked:', payload);
+        setSegmentLocks(prev => new Map(prev).set(payload.segmentId, payload as SegmentLock));
+      })
+      // Listen for segment unlocks
+      .on('broadcast', { event: 'segment-unlocked' }, ({ payload }) => {
+        console.log('🔓 Segment unlocked:', payload.segmentId);
+        setSegmentLocks(prev => {
+          const next = new Map(prev);
+          next.delete(payload.segmentId);
+          return next;
+        });
+      })
+      // Listen for segment updates
+      .on('broadcast', { event: 'segment-updated' }, ({ payload }) => {
+        console.log('📝 Segment updated:', payload);
+        window.dispatchEvent(new CustomEvent('segment-updated', { detail: payload }));
+      })
+      // Listen for segment saves
+      .on('broadcast', { event: 'segment-saved' }, ({ payload }) => {
+        console.log('💾 Segment saved:', payload);
+        window.dispatchEvent(new CustomEvent('segment-saved', { detail: payload }));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Subscribed to project channel');
+          // Track presence
+          await newChannel.track({
+            userId: user.id,
+            userName: user.name || user.email,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    setChannel(newChannel);
+    setCurrentProjectId(projectId);
   };
 
   const leaveProject = (projectId: string) => {
-    if (socket) {
-      console.log('Leaving project:', projectId);
-      socket.emit('leave-project', { projectId });
+    if (channel) {
+      console.log('👋 Leaving project:', projectId);
+      supabase.removeChannel(channel);
+      setChannel(null);
       setCurrentProjectId(null);
       setSegmentLocks(new Map());
     }
   };
 
   const lockSegment = (segmentId: string, projectId: string) => {
-    if (socket && user) {
-      console.log('Locking segment:', segmentId);
-      socket.emit('lock-segment', {
-        segmentId,
-        projectId,
-        userId: user.id,
-        userName: user.name,
+    if (channel && user) {
+      console.log('🔒 Locking segment:', segmentId);
+      channel.send({
+        type: 'broadcast',
+        event: 'segment-locked',
+        payload: {
+          segmentId,
+          projectId,
+          userId: user.id,
+          userName: user.name || user.email,
+          lockedAt: Date.now(),
+        },
       });
     }
   };
 
   const unlockSegment = (segmentId: string, projectId: string) => {
-    if (socket && user) {
-      console.log('Unlocking segment:', segmentId);
-      socket.emit('unlock-segment', {
-        segmentId,
-        projectId,
-        userId: user.id,
+    if (channel && user) {
+      console.log('🔓 Unlocking segment:', segmentId);
+      channel.send({
+        type: 'broadcast',
+        event: 'segment-unlocked',
+        payload: {
+          segmentId,
+          projectId,
+          userId: user.id,
+        },
       });
     }
   };
 
   const updateSegment = (segmentId: string, projectId: string, targetText: string) => {
-    if (socket && user) {
-      socket.emit('segment-update', {
-        segmentId,
-        projectId,
-        userId: user.id,
-        targetText,
+    if (channel && user) {
+      channel.send({
+        type: 'broadcast',
+        event: 'segment-updated',
+        payload: {
+          segmentId,
+          projectId,
+          userId: user.id,
+          targetText,
+        },
       });
     }
   };
 
   const saveSegment = (segmentId: string, projectId: string, targetText: string, status: string) => {
-    if (socket && user) {
-      console.log('Saving segment:', segmentId);
-      socket.emit('segment-saved', {
-        segmentId,
-        projectId,
-        userId: user.id,
-        targetText,
-        status,
+    if (channel && user) {
+      console.log('💾 Saving segment:', segmentId);
+      channel.send({
+        type: 'broadcast',
+        event: 'segment-saved',
+        payload: {
+          segmentId,
+          projectId,
+          userId: user.id,
+          targetText,
+          status,
+        },
       });
     }
   };
 
   const sendHeartbeat = (segmentId: string) => {
-    if (socket && user) {
-      socket.emit('lock-heartbeat', {
-        segmentId,
-        userId: user.id,
+    if (channel && user) {
+      channel.send({
+        type: 'broadcast',
+        event: 'lock-heartbeat',
+        payload: {
+          segmentId,
+          userId: user.id,
+        },
       });
     }
   };
@@ -212,7 +216,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   return (
     <SocketContext.Provider
       value={{
-        socket,
+        socket: channel,
         connected,
         joinProject,
         leaveProject,
