@@ -90,10 +90,10 @@ class ApiService {
   }
 
   async translate(request: TranslateRequest): Promise<TranslateResponse> {
-    console.log('🌐 API: Making translation request to:', `${this.baseUrl}/api/translate`);
+    console.log('🌐 API: Making translation request to:', `${this.baseUrl}/translate`);
     console.log('📤 API: Request data:', request);
     
-    const response = await fetch(`${this.baseUrl}/api/translate`, {
+    const response = await fetch(`${this.baseUrl}/translate`, {
       method: 'POST',
       headers: await this.getHeaders(),
       body: JSON.stringify(request),
@@ -113,7 +113,7 @@ class ApiService {
   }
 
   async getProject(id: string): Promise<Project> {
-    const response = await fetch(`${this.baseUrl}/api/projects/${id}`, {
+    const response = await fetch(`${this.baseUrl}/projects/${id}`, {
       headers: await this.getHeaders(),
     });
     
@@ -126,7 +126,7 @@ class ApiService {
   }
 
   async getSegments(projectId: string): Promise<Segment[]> {
-    const response = await fetch(`${this.baseUrl}/api/segments?project_id=${projectId}`, {
+    const response = await fetch(`${this.baseUrl}/segments?project_id=${projectId}`, {
       headers: await this.getHeaders(),
     });
     
@@ -139,7 +139,7 @@ class ApiService {
   }
 
   async createSegment(segment: Partial<Segment>): Promise<Segment> {
-    const response = await fetch(`${this.baseUrl}/api/segments`, {
+    const response = await fetch(`${this.baseUrl}/segments`, {
       method: 'POST',
       headers: await this.getHeaders(),
       body: JSON.stringify(segment),
@@ -154,7 +154,7 @@ class ApiService {
   }
 
   async updateSegment(id: string, updates: Partial<Segment>): Promise<Segment> {
-    const response = await fetch(`${this.baseUrl}/api/segments/${id}`, {
+    const response = await fetch(`${this.baseUrl}/segments/${id}`, {
       method: 'PUT',
       headers: await this.getHeaders(),
       body: JSON.stringify(updates),
@@ -169,7 +169,7 @@ class ApiService {
   }
 
   async getProjects(): Promise<Project[]> {
-    const response = await fetch(`${this.baseUrl}/api/projects`, {
+    const response = await fetch(`${this.baseUrl}/projects`, {
       headers: await this.getHeaders(),
     });
     
@@ -182,7 +182,7 @@ class ApiService {
   }
 
   async createProject(project: Partial<Project>): Promise<Project> {
-    const response = await fetch(`${this.baseUrl}/api/projects`, {
+    const response = await fetch(`${this.baseUrl}/projects`, {
       method: 'POST',
       headers: await this.getHeaders(),
       body: JSON.stringify(project),
@@ -202,7 +202,7 @@ class ApiService {
     if (languagePair) params.append('language_pair', languagePair);
     if (search) params.append('search', search);
 
-    const response = await fetch(`${this.baseUrl}/api/glossary?${params.toString()}`, {
+    const response = await fetch(`${this.baseUrl}/glossary?${params.toString()}`, {
       headers: await this.getHeaders(),
     });
     
@@ -215,7 +215,7 @@ class ApiService {
   }
 
   async getGlossaryTerm(id: string): Promise<GlossaryTerm> {
-    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
+    const response = await fetch(`${this.baseUrl}/glossary/${id}`, {
       headers: await this.getHeaders(),
     });
     
@@ -228,7 +228,7 @@ class ApiService {
   }
 
   async createGlossaryTerm(term: Omit<GlossaryTerm, 'id' | 'created_at'>): Promise<GlossaryTerm> {
-    const response = await fetch(`${this.baseUrl}/api/glossary`, {
+    const response = await fetch(`${this.baseUrl}/glossary`, {
       method: 'POST',
       headers: await this.getHeaders(),
       body: JSON.stringify(term),
@@ -243,7 +243,7 @@ class ApiService {
   }
 
   async updateGlossaryTerm(id: string, updates: Partial<GlossaryTerm>): Promise<GlossaryTerm> {
-    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
+    const response = await fetch(`${this.baseUrl}/glossary/${id}`, {
       method: 'PUT',
       headers: await this.getHeaders(),
       body: JSON.stringify(updates),
@@ -258,7 +258,7 @@ class ApiService {
   }
 
   async deleteGlossaryTerm(id: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/glossary/${id}`, {
+    const response = await fetch(`${this.baseUrl}/glossary/${id}`, {
       method: 'DELETE',
       headers: await this.getHeaders(),
     });
@@ -280,7 +280,7 @@ class ApiService {
     all_confirmed: boolean;
     can_move_to_review: boolean;
   }> {
-    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/status`, {
+    const response = await fetch(`${this.baseUrl}/workflow/project/${projectId}/status`, {
       headers: await this.getHeaders(),
     });
     
@@ -293,7 +293,7 @@ class ApiService {
   }
 
   async updateProjectStatus(projectId: string, status: string): Promise<Project> {
-    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/status`, {
+    const response = await fetch(`${this.baseUrl}/workflow/project/${projectId}/status`, {
       method: 'PUT',
       headers: await this.getHeaders(),
       body: JSON.stringify({ status }),
@@ -309,7 +309,7 @@ class ApiService {
   }
 
   async confirmAllSegments(projectId: string): Promise<{ updated_count: number; message: string }> {
-    const response = await fetch(`${this.baseUrl}/api/workflow/project/${projectId}/confirm-all`, {
+    const response = await fetch(`${this.baseUrl}/workflow/project/${projectId}/confirm-all`, {
       method: 'POST',
       headers: await this.getHeaders(),
     });
@@ -327,7 +327,7 @@ class ApiService {
     if (status) params.append('status', status);
 
     const response = await fetch(
-      `${this.baseUrl}/api/workflow/segments/${projectId}/filter?${params.toString()}`,
+      `${this.baseUrl}/workflow/segments/${projectId}/filter?${params.toString()}`,
       { headers: await this.getHeaders() }
     );
     
@@ -340,7 +340,7 @@ class ApiService {
   }
 
   async updateSegmentStatus(segmentId: string, status: string): Promise<Segment> {
-    const response = await fetch(`${this.baseUrl}/api/workflow/segment/${segmentId}/status`, {
+    const response = await fetch(`${this.baseUrl}/workflow/segment/${segmentId}/status`, {
       method: 'POST',
       headers: await this.getHeaders(),
       body: JSON.stringify({ status }),
@@ -362,7 +362,7 @@ class ApiService {
     roles: Array<{ role: string; project_id: string | null }>;
     primary_role: string;
   }> {
-    const response = await fetch(`${this.baseUrl}/api/auth/me`, {
+    const response = await fetch(`${this.baseUrl}/auth/me`, {
       headers: {
         'Content-Type': 'application/json',
         'x-user-id': userId,
