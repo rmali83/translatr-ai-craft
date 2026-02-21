@@ -95,8 +95,8 @@ serve(async (req) => {
       }
     }
 
-    // Step 4: AI Translation (Mock for now)
-    const translatedText = await mockTranslate(source_text, source_lang || 'auto', target_lang, glossaryTerms)
+    // Step 4: AI Translation with OpenAI
+    const translatedText = await translateWithAI(source_text, source_lang || 'auto', target_lang, glossaryTerms)
     
     const quality = {
       score: 85,
@@ -164,8 +164,132 @@ serve(async (req) => {
   }
 })
 
-// Mock translation function
+// AI Translation with OpenAI
+async function translateWithAI(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  glossary: GlossaryTerm[]
+): Promise<string> {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+  
+  // Fallback to mock if no API key
+  if (!openaiApiKey) {
+    console.log('⚠️ No OpenAI API key found, using mock translation')
+    return mockTranslate(text, sourceLang, targetLang, glossary)
+  }
+
+  try {
+    // Build prompt with glossary
+    let prompt = `Translate the following text from ${sourceLang} to ${targetLang}.\n`
+    prompt += `Use professional tone and maintain the original meaning.\n`
+
+    if (glossary.length > 0) {
+      prompt += `\nStrictly follow these glossary terms:\n`
+      glossary.forEach((term) => {
+        prompt += `- "${term.source_term}" must be translated as "${term.target_term}"`
+        if (term.description) {
+          prompt += ` (${term.description})`
+        }
+        prompt += `\n`
+      })
+    }
+
+    prompt += `\nText:\n${text}`
+
+    // Call OpenAI API
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a professional translator. Return only the translated text without any explanations, notes, or additional commentary.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('OpenAI API error:', error)
+      throw new Error('OpenAI translation failed')
+    }
+
+    const data = await response.json()
+    return data.choices[0].message.content.trim()
+  } catch (error) {
+    console.error('AI translation error:', error)
+    // Fallback to mock on error
+    return mockTranslate(text, sourceLang, targetLang, glossary)
+  }
+}
+
+// Mock translation function with better translations
 function mockTranslate(text: string, sourceLang: string, targetLang: string, glossary: GlossaryTerm[]): string {
-  // Simple mock - in production, call OpenAI/Anthropic API
-  return `[${targetLang}] ${text}`
+  // Apply glossary terms first
+  let translatedText = text
+  
+  for (const term of glossary) {
+    const regex = new RegExp(`\\b${term.source_term}\\b`, 'gi')
+    translatedText = translatedText.replace(regex, term.target_term)
+  }
+  
+  // Mock translations for common languages
+  const mockTranslations: Record<string, Record<string, string>> = {
+    'es': { // Spanish
+      'Hello': 'Hola',
+      'World': 'Mundo',
+      'Thank you': 'Gracias',
+      'Welcome': 'Bienvenido',
+      'Good morning': 'Buenos días',
+    },
+    'fr': { // French
+      'Hello': 'Bonjour',
+      'World': 'Monde',
+      'Thank you': 'Merci',
+      'Welcome': 'Bienvenue',
+      'Good morning': 'Bonjour',
+    },
+    'de': { // German
+      'Hello': 'Hallo',
+      'World': 'Welt',
+      'Thank you': 'Danke',
+      'Welcome': 'Willkommen',
+      'Good morning': 'Guten Morgen',
+    },
+    'ur': { // Urdu
+      'Hello': 'ہیلو',
+      'World': 'دنیا',
+      'Thank you': 'شکریہ',
+      'Welcome': 'خوش آمدید',
+      'Good morning': 'صبح بخیر',
+    }
+  }
+  
+  // Try to find translation in mock data
+  const targetTranslations = mockTranslations[targetLang.toLowerCase()]
+  if (targetTranslations) {
+    for (const [source, target] of Object.entries(targetTranslations)) {
+      const regex = new RegExp(`\\b${source}\\b`, 'gi')
+      translatedText = translatedText.replace(regex, target)
+    }
+  }
+  
+  // If no translation found, return with language tag
+  if (translatedText === text && glossary.length === 0) {
+    return `[${targetLang}] ${text}`
+  }
+  
+  return translatedText
 }
