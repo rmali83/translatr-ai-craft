@@ -24,7 +24,7 @@ serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const path = url.pathname.replace('/translation-memory', '')
+    const path = url.pathname.split('/translation-memory')[1] || ''
     const method = req.method
     const searchParams = url.searchParams
 

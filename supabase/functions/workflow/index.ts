@@ -24,7 +24,7 @@ serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const path = url.pathname.replace('/workflow', '')
+    const path = url.pathname.split('/workflow')[1] || ''
     const method = req.method
 
     // GET /project/:id/status - Get project workflow status

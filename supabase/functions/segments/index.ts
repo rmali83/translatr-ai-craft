@@ -24,7 +24,7 @@ serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const path = url.pathname.replace('/segments', '')
+    const path = url.pathname.split('/segments')[1] || ''
     const method = req.method
     const searchParams = url.searchParams
 

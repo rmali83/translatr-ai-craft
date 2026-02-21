@@ -24,7 +24,7 @@ serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const path = url.pathname.replace('/projects', '')
+    const path = url.pathname.split('/projects')[1] || ''
     const method = req.method
 
     // GET / - Get all projects

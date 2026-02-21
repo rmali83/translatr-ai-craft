@@ -39,6 +39,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
+    // Socket.IO temporarily disabled - migrating to Supabase Realtime
+    console.log('Socket.IO disabled - using Supabase Realtime instead');
+    setConnected(false);
+    
+    // TODO: Implement Supabase Realtime for collaboration features
+    
+    /*
     // Initialize socket connection
     const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -114,6 +121,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     return () => {
       newSocket.close();
     };
+    */
   }, [user]);
 
   const joinProject = (projectId: string) => {

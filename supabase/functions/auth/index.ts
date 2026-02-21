@@ -24,7 +24,7 @@ serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const path = url.pathname.replace('/auth', '')
+    const path = url.pathname.split('/auth')[1] || ''
     const method = req.method
 
     // GET /me - Get current user info
