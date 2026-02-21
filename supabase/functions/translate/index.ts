@@ -164,75 +164,262 @@ serve(async (req) => {
   }
 })
 
-// AI Translation with OpenAI
+// AI Translation with multiple providers
 async function translateWithAI(
   text: string,
   sourceLang: string,
   targetLang: string,
   glossary: GlossaryTerm[]
 ): Promise<string> {
+  // Try Microsoft Translator first (best free tier: 2M chars/month)
+  const azureKey = Deno.env.get('AZURE_TRANSLATOR_KEY')
+  const azureRegion = Deno.env.get('AZURE_TRANSLATOR_REGION') || 'global'
+  
+  if (azureKey) {
+    console.log('🔑 Using Microsoft Translator API')
+    try {
+      return await translateWithAzure(text, sourceLang, targetLang, glossary, azureKey, azureRegion)
+    } catch (error) {
+      console.error('❌ Azure error:', error)
+      console.log('⚠️ Falling back to next provider...')
+    }
+  }
+  
+  // Try Google Gemini (free tier: 1500 requests/day)
+  const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
+  
+  if (geminiApiKey) {
+    console.log('🔑 Using Google Gemini API')
+    try {
+      return await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
+    } catch (error) {
+      console.error('❌ Gemini error:', error)
+      console.log('⚠️ Falling back to OpenAI...')
+    }
+  }
+  
+  // Fallback to OpenAI
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
   
-  // Fallback to mock if no API key
-  if (!openaiApiKey) {
-    console.log('⚠️ No OpenAI API key found, using mock translation')
-    return mockTranslate(text, sourceLang, targetLang, glossary)
+  if (openaiApiKey) {
+    console.log('🔑 Using OpenAI API')
+    try {
+      return await translateWithOpenAI(text, sourceLang, targetLang, glossary, openaiApiKey)
+    } catch (error) {
+      console.error('❌ OpenAI error:', error)
+      console.log('⚠️ Falling back to mock translation')
+    }
+  }
+  
+  console.log('⚠️ No API keys found, using mock translation')
+  return mockTranslate(text, sourceLang, targetLang, glossary)
+}
+
+// Microsoft Translator (Azure Cognitive Services)
+async function translateWithAzure(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  glossary: GlossaryTerm[],
+  apiKey: string,
+  region: string
+): Promise<string> {
+  console.log('🤖 Calling Microsoft Translator API...')
+  
+  // Apply glossary terms before translation
+  let textToTranslate = text
+  const glossaryMap = new Map<string, string>()
+  
+  for (const term of glossary) {
+    const placeholder = `__GLOSSARY_${glossaryMap.size}__`
+    const regex = new RegExp(`\\b${term.source_term}\\b`, 'gi')
+    textToTranslate = textToTranslate.replace(regex, placeholder)
+    glossaryMap.set(placeholder, term.target_term)
+  }
+  
+  // Convert language codes to Azure format
+  const fromLang = sourceLang === 'auto' ? '' : convertToAzureLangCode(sourceLang)
+  const toLang = convertToAzureLangCode(targetLang)
+  
+  const endpoint = 'https://api.cognitive.microsofttranslator.com'
+  const path = '/translate'
+  const params = new URLSearchParams({
+    'api-version': '3.0',
+    'to': toLang
+  })
+  
+  if (fromLang) {
+    params.append('from', fromLang)
+  }
+  
+  const response = await fetch(`${endpoint}${path}?${params}`, {
+    method: 'POST',
+    headers: {
+      'Ocp-Apim-Subscription-Key': apiKey,
+      'Ocp-Apim-Subscription-Region': region,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify([{ text: textToTranslate }]),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('❌ Azure Translator error:', error)
+    throw new Error('Azure translation failed')
   }
 
-  try {
-    // Build prompt with glossary
-    let prompt = `Translate the following text from ${sourceLang} to ${targetLang}.\n`
-    prompt += `Use professional tone and maintain the original meaning.\n`
+  const data = await response.json()
+  let translation = data[0].translations[0].text
+  
+  // Replace glossary placeholders with target terms
+  for (const [placeholder, targetTerm] of glossaryMap) {
+    translation = translation.replace(new RegExp(placeholder, 'g'), targetTerm)
+  }
+  
+  console.log('✅ Microsoft Translator successful')
+  return translation
+}
 
-    if (glossary.length > 0) {
-      prompt += `\nStrictly follow these glossary terms:\n`
-      glossary.forEach((term) => {
-        prompt += `- "${term.source_term}" must be translated as "${term.target_term}"`
-        if (term.description) {
-          prompt += ` (${term.description})`
-        }
-        prompt += `\n`
-      })
-    }
+// Convert language codes to Azure format
+function convertToAzureLangCode(lang: string): string {
+  const langMap: Record<string, string> = {
+    'english': 'en',
+    'spanish': 'es',
+    'french': 'fr',
+    'german': 'de',
+    'urdu': 'ur',
+    'arabic': 'ar',
+    'chinese': 'zh-Hans',
+    'japanese': 'ja',
+    'korean': 'ko',
+    'portuguese': 'pt',
+    'russian': 'ru',
+    'italian': 'it',
+    'dutch': 'nl',
+    'polish': 'pl',
+    'turkish': 'tr',
+    'hindi': 'hi',
+  }
+  
+  const lowerLang = lang.toLowerCase()
+  return langMap[lowerLang] || lowerLang
+}
 
-    prompt += `\nText:\n${text}`
+// Google Gemini translation
+async function translateWithGemini(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  glossary: GlossaryTerm[],
+  apiKey: string
+): Promise<string> {
+  console.log('🤖 Calling Google Gemini API for translation...')
+  
+  // Build prompt with glossary
+  let prompt = `Translate the following text from ${sourceLang} to ${targetLang}.\n`
+  prompt += `Return ONLY the translated text, nothing else.\n`
 
-    // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a professional translator. Return only the translated text without any explanations, notes, or additional commentary.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-      }),
+  if (glossary.length > 0) {
+    prompt += `\nStrictly follow these glossary terms:\n`
+    glossary.forEach((term) => {
+      prompt += `- "${term.source_term}" must be translated as "${term.target_term}"`
+      if (term.description) {
+        prompt += ` (${term.description})`
+      }
+      prompt += `\n`
     })
-
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('OpenAI API error:', error)
-      throw new Error('OpenAI translation failed')
-    }
-
-    const data = await response.json()
-    return data.choices[0].message.content.trim()
-  } catch (error) {
-    console.error('AI translation error:', error)
-    // Fallback to mock on error
-    return mockTranslate(text, sourceLang, targetLang, glossary)
   }
+
+  prompt += `\nText to translate:\n${text}`
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+        }
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('❌ Gemini API error:', error)
+    throw new Error('Gemini translation failed')
+  }
+
+  const data = await response.json()
+  const translation = data.candidates[0].content.parts[0].text.trim()
+  console.log('✅ Gemini translation successful')
+  return translation
+}
+
+// OpenAI translation
+async function translateWithOpenAI(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  glossary: GlossaryTerm[],
+  apiKey: string
+): Promise<string> {
+  console.log('🤖 Calling OpenAI API for translation...')
+  
+  // Build prompt with glossary
+  let prompt = `Translate the following text from ${sourceLang} to ${targetLang}.\n`
+  prompt += `Use professional tone and maintain the original meaning.\n`
+
+  if (glossary.length > 0) {
+    prompt += `\nStrictly follow these glossary terms:\n`
+    glossary.forEach((term) => {
+      prompt += `- "${term.source_term}" must be translated as "${term.target_term}"`
+      if (term.description) {
+        prompt += ` (${term.description})`
+      }
+      prompt += `\n`
+    })
+  }
+
+  prompt += `\nText:\n${text}`
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional translator. Return only the translated text without any explanations, notes, or additional commentary.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.3,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('❌ OpenAI API error:', error)
+    throw new Error('OpenAI translation failed')
+  }
+
+  const data = await response.json()
+  const translation = data.choices[0].message.content.trim()
+  console.log('✅ OpenAI translation successful')
+  return translation
 }
 
 // Mock translation function with better translations

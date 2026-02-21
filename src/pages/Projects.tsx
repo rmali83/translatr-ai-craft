@@ -25,8 +25,49 @@ export default function Projects() {
     name: '',
     source_language: '',
     target_language: '',
-    description: ''
+    description: '',
+    deadline: '',
+    tm_file: null as File | null,
+    reference_file: null as File | null,
   });
+  const [sourceLangSuggestions, setSourceLangSuggestions] = useState<string[]>([]);
+  const [targetLangSuggestions, setTargetLangSuggestions] = useState<string[]>([]);
+  const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
+  const [showTargetSuggestions, setShowTargetSuggestions] = useState(false);
+
+  // Common languages for autocomplete
+  const commonLanguages = [
+    'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 
+    'Russian', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi', 
+    'Urdu', 'Turkish', 'Dutch', 'Polish', 'Swedish', 'Norwegian', 
+    'Danish', 'Finnish', 'Greek', 'Hebrew', 'Thai', 'Vietnamese'
+  ];
+
+  const handleSourceLanguageChange = (value: string) => {
+    setFormData({...formData, source_language: value});
+    if (value.length > 0) {
+      const filtered = commonLanguages.filter(lang => 
+        lang.toLowerCase().startsWith(value.toLowerCase())
+      );
+      setSourceLangSuggestions(filtered);
+      setShowSourceSuggestions(true);
+    } else {
+      setShowSourceSuggestions(false);
+    }
+  };
+
+  const handleTargetLanguageChange = (value: string) => {
+    setFormData({...formData, target_language: value});
+    if (value.length > 0) {
+      const filtered = commonLanguages.filter(lang => 
+        lang.toLowerCase().startsWith(value.toLowerCase())
+      );
+      setTargetLangSuggestions(filtered);
+      setShowTargetSuggestions(true);
+    } else {
+      setShowTargetSuggestions(false);
+    }
+  };
   const { toast } = useToast();
 
   useEffect(() => {
@@ -67,7 +108,15 @@ export default function Projects() {
         description: "Project created successfully"
       });
       setIsDialogOpen(false);
-      setFormData({ name: '', source_language: '', target_language: '', description: '' });
+      setFormData({ 
+        name: '', 
+        source_language: '', 
+        target_language: '', 
+        description: '',
+        deadline: '',
+        tm_file: null,
+        reference_file: null
+      });
       loadProjects();
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -170,7 +219,7 @@ export default function Projects() {
                   New Project
                 </button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] glass-card border-glass-border">
+              <DialogContent className="sm:max-w-[600px] glass-card border-glass-border max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="text-heading">Create New Project</DialogTitle>
                   <DialogDescription>
@@ -178,6 +227,7 @@ export default function Projects() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
+                  {/* Project Name */}
                   <div className="space-y-2">
                     <Label htmlFor="project-name" className="text-sm font-medium">Project Name *</Label>
                     <Input 
@@ -188,40 +238,142 @@ export default function Projects() {
                       className="glass border-glass-border"
                     />
                   </div>
+
+                  {/* Languages with Autocomplete */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                    {/* Source Language */}
+                    <div className="space-y-2 relative">
                       <Label htmlFor="source-lang" className="text-sm font-medium">Source Language *</Label>
                       <Input 
                         id="source-lang" 
-                        placeholder="e.g., English"
+                        placeholder="Start typing..."
                         value={formData.source_language}
-                        onChange={(e) => setFormData({...formData, source_language: e.target.value})}
+                        onChange={(e) => handleSourceLanguageChange(e.target.value)}
+                        onFocus={() => formData.source_language && setShowSourceSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 200)}
                         className="glass border-glass-border"
+                        autoComplete="off"
                       />
+                      {showSourceSuggestions && sourceLangSuggestions.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 glass-card border-glass-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {sourceLangSuggestions.map((lang) => (
+                            <button
+                              key={lang}
+                              type="button"
+                              onClick={() => {
+                                setFormData({...formData, source_language: lang});
+                                setShowSourceSuggestions(false);
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-accent/10 transition-colors text-sm"
+                            >
+                              {lang}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-2">
+
+                    {/* Target Language */}
+                    <div className="space-y-2 relative">
                       <Label htmlFor="target-lang" className="text-sm font-medium">Target Language *</Label>
                       <Input 
                         id="target-lang" 
-                        placeholder="e.g., French"
+                        placeholder="Start typing..."
                         value={formData.target_language}
-                        onChange={(e) => setFormData({...formData, target_language: e.target.value})}
+                        onChange={(e) => handleTargetLanguageChange(e.target.value)}
+                        onFocus={() => formData.target_language && setShowTargetSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowTargetSuggestions(false), 200)}
                         className="glass border-glass-border"
+                        autoComplete="off"
                       />
+                      {showTargetSuggestions && targetLangSuggestions.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 glass-card border-glass-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {targetLangSuggestions.map((lang) => (
+                            <button
+                              key={lang}
+                              type="button"
+                              onClick={() => {
+                                setFormData({...formData, target_language: lang});
+                                setShowTargetSuggestions(false);
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-accent/10 transition-colors text-sm"
+                            >
+                              {lang}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* Deadline */}
                   <div className="space-y-2">
-                    <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                    <Label htmlFor="deadline" className="text-sm font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Deadline
+                    </Label>
                     <Input 
-                      id="description" 
-                      placeholder="Optional project description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      id="deadline" 
+                      type="datetime-local"
+                      value={formData.deadline}
+                      onChange={(e) => setFormData({...formData, deadline: e.target.value})}
                       className="glass border-glass-border"
                     />
                   </div>
+
+                  {/* TM File Upload */}
+                  <div className="space-y-2">
+                    <Label htmlFor="tm-file" className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Translation Memory File (TMX)
+                    </Label>
+                    <div className="relative">
+                      <Input 
+                        id="tm-file" 
+                        type="file"
+                        accept=".tmx,.xliff,.xlf"
+                        onChange={(e) => setFormData({...formData, tm_file: e.target.files?.[0] || null})}
+                        className="glass border-glass-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Upload TMX or XLIFF files to pre-populate translation memory
+                    </p>
+                  </div>
+
+                  {/* Reference File Upload */}
+                  <div className="space-y-2">
+                    <Label htmlFor="ref-file" className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Reference File
+                    </Label>
+                    <div className="relative">
+                      <Input 
+                        id="ref-file" 
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        onChange={(e) => setFormData({...formData, reference_file: e.target.files?.[0] || null})}
+                        className="glass border-glass-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Upload reference documents for context and style guidelines
+                    </p>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                    <textarea
+                      id="description" 
+                      placeholder="Optional project description..."
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl glass border-glass-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all duration-300 min-h-[100px] resize-none"
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-end gap-3">
+                <div className="flex justify-end gap-3 pt-4 border-t border-glass-border">
                   <button
                     onClick={() => setIsDialogOpen(false)}
                     className="px-6 py-2 rounded-xl glass hover-glow transition-all duration-300"
