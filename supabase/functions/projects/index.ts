@@ -69,7 +69,7 @@ serve(async (req) => {
 
     // POST / - Create new project
     if (path === '' && method === 'POST') {
-      const { name, source_language, target_language, status = 'pending' } = await req.json()
+      const { name, source_language, target_language, status = 'pending', deadline, description } = await req.json()
 
       if (!name || !source_language || !target_language) {
         return new Response(
@@ -78,9 +78,19 @@ serve(async (req) => {
         )
       }
 
+      const projectData: any = { 
+        name, 
+        source_language, 
+        target_language, 
+        status 
+      }
+      
+      if (deadline) projectData.deadline = deadline
+      if (description) projectData.description = description
+
       const { data, error } = await supabaseClient
         .from('projects')
-        .insert([{ name, source_language, target_language, status }])
+        .insert([projectData])
         .select()
         .single()
 

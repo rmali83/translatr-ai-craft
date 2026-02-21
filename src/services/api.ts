@@ -196,6 +196,29 @@ class ApiService {
     return data.data;
   }
 
+  async uploadProjectFile(projectId: string, file: File, fileType: 'tm' | 'reference'): Promise<{ url: string; fileName: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('projectId', projectId);
+    formData.append('fileType', fileType);
+
+    const headers = await this.getHeaders();
+    delete headers['Content-Type']; // Let browser set it for FormData
+
+    const response = await fetch(`${this.baseUrl}/upload-project-file`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload file');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
   // Glossary endpoints
   async getGlossaryTerms(languagePair?: string, search?: string): Promise<GlossaryTerm[]> {
     const params = new URLSearchParams();

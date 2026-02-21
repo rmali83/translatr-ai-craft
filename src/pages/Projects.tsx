@@ -102,7 +102,39 @@ export default function Projects() {
     }
 
     try {
-      const project = await api.createProject(formData);
+      // Create project first
+      const projectData: any = {
+        name: formData.name,
+        source_language: formData.source_language,
+        target_language: formData.target_language,
+        description: formData.description
+      };
+      
+      if (formData.deadline) {
+        projectData.deadline = new Date(formData.deadline).toISOString();
+      }
+
+      const project = await api.createProject(projectData);
+      
+      // Upload files if provided
+      if (formData.tm_file || formData.reference_file) {
+        const uploadPromises = [];
+        
+        if (formData.tm_file) {
+          uploadPromises.push(
+            api.uploadProjectFile(project.id, formData.tm_file, 'tm')
+          );
+        }
+        
+        if (formData.reference_file) {
+          uploadPromises.push(
+            api.uploadProjectFile(project.id, formData.reference_file, 'reference')
+          );
+        }
+        
+        await Promise.all(uploadPromises);
+      }
+
       toast({
         title: "Success",
         description: "Project created successfully"
