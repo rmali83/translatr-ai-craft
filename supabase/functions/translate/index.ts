@@ -171,7 +171,20 @@ async function translateWithAI(
   targetLang: string,
   glossary: GlossaryTerm[]
 ): Promise<string> {
-  // Try Microsoft Translator first (best free tier: 2M chars/month)
+  // Try NLLB via Hugging Face first (best for translation, 30k free requests/month)
+  const hfToken = Deno.env.get('HUGGINGFACE_API_TOKEN')
+  
+  if (hfToken) {
+    console.log('🔑 Using NLLB (Hugging Face) for translation')
+    try {
+      return await translateWithNLLB(text, sourceLang, targetLang, glossary, hfToken)
+    } catch (error) {
+      console.error('❌ NLLB error:', error)
+      console.log('⚠️ Falling back to next provider...')
+    }
+  }
+  
+  // Try Microsoft Translator (best free tier: 2M chars/month)
   const azureKey = Deno.env.get('AZURE_TRANSLATOR_KEY')
   const azureRegion = Deno.env.get('AZURE_TRANSLATOR_REGION') || 'global'
   
@@ -213,6 +226,106 @@ async function translateWithAI(
   
   console.log('⚠️ No API keys found, using mock translation')
   return mockTranslate(text, sourceLang, targetLang, glossary)
+}
+
+// NLLB Translation via Hugging Face Inference API
+async function translateWithNLLB(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  glossary: GlossaryTerm[],
+  apiToken: string
+): Promise<string> {
+  console.log('🤖 Calling NLLB (Meta) via Hugging Face...')
+  
+  // Apply glossary terms before translation
+  let textToTranslate = text
+  const glossaryMap = new Map<string, string>()
+  
+  for (const term of glossary) {
+    const placeholder = `__GLOSSARY_${glossaryMap.size}__`
+    const regex = new RegExp(`\\b${term.source_term}\\b`, 'gi')
+    textToTranslate = textToTranslate.replace(regex, placeholder)
+    glossaryMap.set(placeholder, term.target_term)
+  }
+  
+  // Convert language codes to NLLB format (flores-200 codes)
+  const srcLang = convertToNLLBCode(sourceLang)
+  const tgtLang = convertToNLLBCode(targetLang)
+  
+  const response = await fetch(
+    'https://api-inference.huggingface.co/models/facebook/nllb-200-distilled-600M',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs: textToTranslate,
+        parameters: {
+          src_lang: srcLang,
+          tgt_lang: tgtLang,
+        },
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('❌ NLLB API error:', error)
+    throw new Error('NLLB translation failed')
+  }
+
+  const data = await response.json()
+  let translation = data[0]?.translation_text || data.translation_text || textToTranslate
+  
+  // Replace glossary placeholders with target terms
+  for (const [placeholder, targetTerm] of glossaryMap) {
+    translation = translation.replace(new RegExp(placeholder, 'g'), targetTerm)
+  }
+  
+  console.log('✅ NLLB translation successful')
+  return translation
+}
+
+// Convert language codes to NLLB flores-200 format
+function convertToNLLBCode(lang: string): string {
+  const langMap: Record<string, string> = {
+    'english': 'eng_Latn',
+    'spanish': 'spa_Latn',
+    'french': 'fra_Latn',
+    'german': 'deu_Latn',
+    'urdu': 'urd_Arab',
+    'arabic': 'arb_Arab',
+    'chinese': 'zho_Hans',
+    'japanese': 'jpn_Jpan',
+    'korean': 'kor_Hang',
+    'portuguese': 'por_Latn',
+    'russian': 'rus_Cyrl',
+    'italian': 'ita_Latn',
+    'dutch': 'nld_Latn',
+    'polish': 'pol_Latn',
+    'turkish': 'tur_Latn',
+    'hindi': 'hin_Deva',
+    'bengali': 'ben_Beng',
+    'punjabi': 'pan_Guru',
+    'vietnamese': 'vie_Latn',
+    'thai': 'tha_Thai',
+    'indonesian': 'ind_Latn',
+    'malay': 'zsm_Latn',
+    'tagalog': 'tgl_Latn',
+    'swahili': 'swh_Latn',
+    'amharic': 'amh_Ethi',
+    'hebrew': 'heb_Hebr',
+    'persian': 'pes_Arab',
+    'pashto': 'pbt_Arab',
+    'sindhi': 'snd_Arab',
+    'auto': 'eng_Latn', // Default to English for auto-detect
+  }
+  
+  const lowerLang = lang.toLowerCase()
+  return langMap[lowerLang] || 'eng_Latn'
 }
 
 // Microsoft Translator (Azure Cognitive Services)
