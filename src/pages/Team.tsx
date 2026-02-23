@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -76,8 +77,21 @@ export default function Team() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const usersData = await api.getAllUsers();
-      setUsers(usersData);
+      // Query database directly instead of using Edge Function
+      const { data: usersData, error } = await supabase
+        .from('users')
+        .select(`
+          *,
+          user_roles (
+            id,
+            role,
+            project_id
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUsers(usersData || []);
     } catch (error) {
       console.error('Failed to load users:', error);
       toast({
