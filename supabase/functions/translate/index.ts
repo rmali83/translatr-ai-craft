@@ -171,35 +171,52 @@ async function translateWithAI(
   targetLang: string,
   glossary: GlossaryTerm[]
 ): Promise<string> {
-  // Try NLLB via Hugging Face first (best for translation, 30k free requests/month)
+  console.log('🌐 Starting AI translation...')
+  console.log(`📝 Text: "${text}"`)
+  console.log(`🌍 ${sourceLang} → ${targetLang}`)
+  
+  // Try Google Gemini FIRST (free, reliable, no model loading)
+  const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
+  
+  if (geminiApiKey) {
+    console.log('🔑 Using Google Gemini API (Primary)')
+    try {
+      const result = await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
+      console.log(`✅ Gemini translation successful: "${result}"`)
+      return result
+    } catch (error) {
+      console.error('❌ Gemini FAILED:', error)
+      console.error('❌ Gemini error message:', error?.message || 'Unknown error')
+      console.error('❌ Gemini error stack:', error?.stack || 'No stack trace')
+      console.log('⚠️ Falling back to NLLB...')
+    }
+  } else {
+    console.log('⚠️ GEMINI_API_KEY not found, skipping Gemini')
+  }
+  
+  // Try NLLB via Hugging Face as fallback
   const hfToken = Deno.env.get('HUGGINGFACE_API_TOKEN')
+  
+  console.log(`🔑 Checking HUGGINGFACE_API_TOKEN: ${hfToken ? 'Found' : 'Not found'}`)
   
   if (hfToken) {
     console.log('🔑 Using NLLB (Hugging Face) for translation')
     try {
-      return await translateWithNLLB(text, sourceLang, targetLang, glossary, hfToken)
+      const result = await translateWithNLLB(text, sourceLang, targetLang, glossary, hfToken)
+      console.log(`✅ NLLB translation successful: "${result}"`)
+      return result
     } catch (error) {
-      console.error('❌ NLLB error:', error)
+      console.error('❌ NLLB FAILED:', error)
+      console.error('❌ Error message:', error?.message || 'Unknown error')
+      console.error('❌ Error stack:', error?.stack || 'No stack trace')
+      if (error?.cause) {
+        console.error('❌ Error cause:', error.cause)
+      }
       console.log('⚠️ Falling back to next provider...')
     }
+  } else {
+    console.log('⚠️ HUGGINGFACE_API_TOKEN not found, skipping NLLB')
   }
-  
-  // Try Microsoft Translator (best free tier: 2M chars/month)
-  const azureKey = Deno.env.get('AZURE_TRANSLATOR_KEY')
-  const azureRegion = Deno.env.get('AZURE_TRANSLATOR_REGION') || 'global'
-  
-  if (azureKey) {
-    console.log('🔑 Using Microsoft Translator API')
-    try {
-      return await translateWithAzure(text, sourceLang, targetLang, glossary, azureKey, azureRegion)
-    } catch (error) {
-      console.error('❌ Azure error:', error)
-      console.log('⚠️ Falling back to next provider...')
-    }
-  }
-  
-  // Try Google Gemini (free tier: 1500 requests/day)
-  const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
   
   if (geminiApiKey) {
     console.log('🔑 Using Google Gemini API')
@@ -229,6 +246,7 @@ async function translateWithAI(
 }
 
 // NLLB Translation via Hugging Face Inference API
+// Optimized for segment-level CAT translation (short sentences)
 async function translateWithNLLB(
   text: string,
   sourceLang: string,
@@ -237,6 +255,8 @@ async function translateWithNLLB(
   apiToken: string
 ): Promise<string> {
   console.log('🤖 Calling NLLB (Meta) via Hugging Face...')
+  console.log(`📝 Text: "${text}"`)
+  console.log(`🌍 ${sourceLang} → ${targetLang}`)
   
   // Apply glossary terms before translation
   let textToTranslate = text
@@ -253,9 +273,14 @@ async function translateWithNLLB(
   const srcLang = convertToNLLBCode(sourceLang)
   const tgtLang = convertToNLLBCode(targetLang)
   
-  const response = await fetch(
-    'https://api-inference.huggingface.co/models/facebook/nllb-200-distilled-600M',
-    {
+  console.log(`🔄 NLLB codes: ${srcLang} → ${tgtLang}`)
+  
+  // Use the new Hugging Face Inference API endpoint
+  const apiUrl = 'https://api-inference.huggingface.co/models/facebook/nllb-200-distilled-600M'
+  
+  console.log(`📡 Calling API: ${apiUrl}`)
+  
+  const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
@@ -266,7 +291,12 @@ async function translateWithNLLB(
         parameters: {
           src_lang: srcLang,
           tgt_lang: tgtLang,
+          max_length: 400,
         },
+        options: {
+          wait_for_model: true, // Wait for model to load
+          use_cache: false, // Don't use cached results
+        }
       }),
     }
   )
@@ -274,24 +304,83 @@ async function translateWithNLLB(
   if (!response.ok) {
     const error = await response.text()
     console.error('❌ NLLB API error:', error)
-    throw new Error('NLLB translation failed')
+    console.error('❌ Response status:', response.status)
+    console.error('❌ Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())))
+    
+    // Check if model is loading
+    if (error.includes('loading') || error.includes('currently loading')) {
+      throw new Error(`NLLB model is loading. Please wait 20-30 seconds and try again. Status: ${response.status}`)
+    }
+    
+    throw new Error(`NLLB translation failed: ${response.status} - ${error}`)
   }
 
   const data = await response.json()
-  let translation = data[0]?.translation_text || data.translation_text || textToTranslate
+  console.log('📥 NLLB response:', JSON.stringify(data))
+  
+  // Handle different response formats from Hugging Face
+  let translation = ''
+  if (Array.isArray(data) && data.length > 0) {
+    translation = data[0]?.translation_text || data[0]?.generated_text || ''
+  } else if (data.translation_text) {
+    translation = data.translation_text
+  } else if (data.generated_text) {
+    translation = data.generated_text
+  } else if (typeof data === 'string') {
+    translation = data
+  }
+  
+  // Fallback if no translation found
+  if (!translation) {
+    console.error('❌ No translation in response:', data)
+    throw new Error('NLLB returned empty translation')
+  }
   
   // Replace glossary placeholders with target terms
   for (const [placeholder, targetTerm] of glossaryMap) {
     translation = translation.replace(new RegExp(placeholder, 'g'), targetTerm)
   }
   
-  console.log('✅ NLLB translation successful')
+  console.log(`✅ NLLB translation successful: "${translation}"`)
   return translation
 }
 
 // Convert language codes to NLLB flores-200 format
+// Supports both ISO codes (en, ur, de) and full names (English, Urdu, German)
 function convertToNLLBCode(lang: string): string {
   const langMap: Record<string, string> = {
+    // ISO 639-1 codes (2-letter)
+    'en': 'eng_Latn',
+    'es': 'spa_Latn',
+    'fr': 'fra_Latn',
+    'de': 'deu_Latn',
+    'ur': 'urd_Arab',
+    'ar': 'arb_Arab',
+    'zh': 'zho_Hans',
+    'ja': 'jpn_Jpan',
+    'ko': 'kor_Hang',
+    'pt': 'por_Latn',
+    'ru': 'rus_Cyrl',
+    'it': 'ita_Latn',
+    'nl': 'nld_Latn',
+    'pl': 'pol_Latn',
+    'tr': 'tur_Latn',
+    'hi': 'hin_Deva',
+    'bn': 'ben_Beng',
+    'pa': 'pan_Guru',
+    'vi': 'vie_Latn',
+    'th': 'tha_Thai',
+    'id': 'ind_Latn',
+    'ms': 'zsm_Latn',
+    'tl': 'tgl_Latn',
+    'sw': 'swh_Latn',
+    'am': 'amh_Ethi',
+    'he': 'heb_Hebr',
+    'fa': 'pes_Arab',
+    'ps': 'pbt_Arab',
+    'sd': 'snd_Arab',
+    
+    // Full language names
     'english': 'eng_Latn',
     'spanish': 'spa_Latn',
     'french': 'fra_Latn',
@@ -325,97 +414,15 @@ function convertToNLLBCode(lang: string): string {
   }
   
   const lowerLang = lang.toLowerCase()
-  return langMap[lowerLang] || 'eng_Latn'
-}
-
-// Microsoft Translator (Azure Cognitive Services)
-async function translateWithAzure(
-  text: string,
-  sourceLang: string,
-  targetLang: string,
-  glossary: GlossaryTerm[],
-  apiKey: string,
-  region: string
-): Promise<string> {
-  console.log('🤖 Calling Microsoft Translator API...')
+  const nllbCode = langMap[lowerLang]
   
-  // Apply glossary terms before translation
-  let textToTranslate = text
-  const glossaryMap = new Map<string, string>()
-  
-  for (const term of glossary) {
-    const placeholder = `__GLOSSARY_${glossaryMap.size}__`
-    const regex = new RegExp(`\\b${term.source_term}\\b`, 'gi')
-    textToTranslate = textToTranslate.replace(regex, placeholder)
-    glossaryMap.set(placeholder, term.target_term)
+  if (!nllbCode) {
+    console.warn(`⚠️ Unknown language code: ${lang}, defaulting to eng_Latn`)
+    return 'eng_Latn'
   }
   
-  // Convert language codes to Azure format
-  const fromLang = sourceLang === 'auto' ? '' : convertToAzureLangCode(sourceLang)
-  const toLang = convertToAzureLangCode(targetLang)
-  
-  const endpoint = 'https://api.cognitive.microsofttranslator.com'
-  const path = '/translate'
-  const params = new URLSearchParams({
-    'api-version': '3.0',
-    'to': toLang
-  })
-  
-  if (fromLang) {
-    params.append('from', fromLang)
-  }
-  
-  const response = await fetch(`${endpoint}${path}?${params}`, {
-    method: 'POST',
-    headers: {
-      'Ocp-Apim-Subscription-Key': apiKey,
-      'Ocp-Apim-Subscription-Region': region,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify([{ text: textToTranslate }]),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    console.error('❌ Azure Translator error:', error)
-    throw new Error('Azure translation failed')
-  }
-
-  const data = await response.json()
-  let translation = data[0].translations[0].text
-  
-  // Replace glossary placeholders with target terms
-  for (const [placeholder, targetTerm] of glossaryMap) {
-    translation = translation.replace(new RegExp(placeholder, 'g'), targetTerm)
-  }
-  
-  console.log('✅ Microsoft Translator successful')
-  return translation
-}
-
-// Convert language codes to Azure format
-function convertToAzureLangCode(lang: string): string {
-  const langMap: Record<string, string> = {
-    'english': 'en',
-    'spanish': 'es',
-    'french': 'fr',
-    'german': 'de',
-    'urdu': 'ur',
-    'arabic': 'ar',
-    'chinese': 'zh-Hans',
-    'japanese': 'ja',
-    'korean': 'ko',
-    'portuguese': 'pt',
-    'russian': 'ru',
-    'italian': 'it',
-    'dutch': 'nl',
-    'polish': 'pl',
-    'turkish': 'tr',
-    'hindi': 'hi',
-  }
-  
-  const lowerLang = lang.toLowerCase()
-  return langMap[lowerLang] || lowerLang
+  console.log(`🔄 Language mapping: ${lang} → ${nllbCode}`)
+  return nllbCode
 }
 
 // Google Gemini translation
@@ -446,7 +453,7 @@ async function translateWithGemini(
   prompt += `\nText to translate:\n${text}`
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -465,7 +472,9 @@ async function translateWithGemini(
   if (!response.ok) {
     const error = await response.text()
     console.error('❌ Gemini API error:', error)
-    throw new Error('Gemini translation failed')
+    console.error('❌ Gemini response status:', response.status)
+    console.error('❌ Gemini response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())))
+    throw new Error(`Gemini translation failed: ${response.status} - ${error}`)
   }
 
   const data = await response.json()

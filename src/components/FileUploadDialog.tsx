@@ -154,6 +154,7 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
               <input
                 ref={fileInputRef}
                 type="file"
+                accept=".json,.csv,.txt,.xlsx,.xls,.tmx,.xliff,.xlf,.doc,.docx,.pdf"
                 onChange={(e) => {
                   const selectedFile = e.target.files?.[0];
                   if (selectedFile) handleFileSelect(selectedFile);

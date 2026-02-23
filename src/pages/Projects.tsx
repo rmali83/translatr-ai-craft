@@ -363,7 +363,7 @@ export default function Projects() {
                       <Input 
                         id="tm-file" 
                         type="file"
-                        accept=".tmx,.xliff,.xlf"
+                        accept=".tmx,.xliff,.xlf,.xlsx,.xls,.csv,.txt,.json"
                         onChange={(e) => setFormData({...formData, tm_file: e.target.files?.[0] || null})}
                         className="glass border-glass-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20"
                       />
@@ -383,7 +383,7 @@ export default function Projects() {
                       <Input 
                         id="ref-file" 
                         type="file"
-                        accept=".pdf,.doc,.docx,.txt"
+                        accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.csv"
                         onChange={(e) => setFormData({...formData, reference_file: e.target.files?.[0] || null})}
                         className="glass border-glass-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20"
                       />

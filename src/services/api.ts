@@ -399,6 +399,82 @@ class ApiService {
     const data = await response.json();
     return data.data;
   }
+
+  // User Management endpoints
+  async getAllUsers(): Promise<Array<{
+    id: string;
+    email: string;
+    name: string;
+    avatar_url?: string;
+    created_at: string;
+    user_roles: Array<{ role: string; project_id: string | null; id: string }>;
+  }>> {
+    const response = await fetch(`${this.baseUrl}/auth/users`, {
+      headers: await this.getHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch users');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async assignUserRole(userId: string, role: string, projectId?: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/users/${userId}/roles`, {
+      method: 'POST',
+      headers: await this.getHeaders(),
+      body: JSON.stringify({
+        role,
+        project_id: projectId || null,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to assign role');
+    }
+  }
+
+  async removeUserRole(userId: string, roleId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/users/${userId}/roles/${roleId}`, {
+      method: 'DELETE',
+      headers: await this.getHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to remove role');
+    }
+  }
+
+  async inviteUser(email: string, name: string, role: string, projectId?: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/invite`, {
+      method: 'POST',
+      headers: await this.getHeaders(),
+      body: JSON.stringify({
+        email,
+        name,
+        role,
+        project_id: projectId || null,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to send invitation');
+    }
+  }
+
+  async updateUserProfile(userId: string, updates: { name?: string; avatar_url?: string }): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/users/${userId}`, {
+      method: 'PUT',
+      headers: await this.getHeaders(),
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update user profile');
+    }
+  }
 }
 
 export const api = new ApiService(API_BASE_URL);

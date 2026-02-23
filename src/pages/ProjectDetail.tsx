@@ -101,9 +101,8 @@ export default function ProjectDetail() {
 
   // Listen for socket events and update segments
   useEffect(() => {
-    if (!socket || !connected) return;
-
-    const handleSegmentSaved = (data: any) => {
+    const handleSegmentSaved = (event: CustomEvent) => {
+      const data = event.detail;
       setSegments(prev =>
         prev.map(s =>
           s.id === data.segmentId
@@ -113,12 +112,12 @@ export default function ProjectDetail() {
       );
     };
 
-    socket.on('segment-saved', handleSegmentSaved);
+    window.addEventListener('segment-saved', handleSegmentSaved as EventListener);
 
     return () => {
-      socket.off('segment-saved', handleSegmentSaved);
+      window.removeEventListener('segment-saved', handleSegmentSaved as EventListener);
     };
-  }, [socket, connected]);
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -474,15 +473,9 @@ export default function ProjectDetail() {
     try {
       await api.updateSegment(segmentId, { status: 'confirmed' });
       
-      // Emit socket event to notify other users
-      if (socket && projectId) {
-        socket.emit('segment-saved', {
-          segmentId,
-          projectId,
-          userId: user?.id,
-          targetText: segment.target_text,
-          status: 'confirmed',
-        });
+      // Broadcast via Supabase Realtime
+      if (id) {
+        saveSegment(segmentId, id, segment.target_text || '', 'confirmed');
       }
     } catch (error) {
       console.error('Failed to update segment status:', error);
