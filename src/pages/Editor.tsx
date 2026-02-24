@@ -12,6 +12,8 @@ import {
   Database,
   MessageSquare,
   FileText,
+  BarChart3,
+  ArrowLeft,
 } from "lucide-react";
 import { useAITranslation } from "@/hooks/useAITranslation";
 import type { TranslationResult, QAResult, RiskResult, RewriteResult } from "@/hooks/useAITranslation";
@@ -214,17 +216,37 @@ export default function Editor() {
         <>
       {/* Editor Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">CAT Editor</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {project ? (
-              `${project.name} · ${project.source_language} → ${project.target_language} · ${segments.length} segments`
-            ) : (
-              `Marketing Website v3.2 · EN → DE · ${segments.length} segments`
-            )}
-          </p>
+        <div className="flex items-center gap-4">
+          {projectId && (
+            <button
+              onClick={() => navigate('/projects')}
+              className="p-2 rounded-lg hover:bg-secondary transition-colors"
+              title="Back to Projects"
+            >
+              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">CAT Editor</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              {project ? (
+                `${project.name} · ${project.source_language} → ${project.target_language} · ${segments.length} segments`
+              ) : (
+                `Marketing Website v3.2 · EN → DE · ${segments.length} segments`
+              )}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          {projectId && (
+            <button
+              onClick={() => navigate(`/projects/${projectId}/statistics`)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="font-medium">Statistics</span>
+            </button>
+          )}
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-success" />
             {segments.filter((s) => s.status === "confirmed").length} confirmed
