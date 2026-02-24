@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Loader2, CheckCheck, Filter, Download, FileUp, Users } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, CheckCheck, Filter, Download, FileUp, Users, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -541,6 +541,14 @@ export default function ProjectDetail() {
               </SelectContent>
             </Select>
           )}
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => navigate(`/projects/${id}/statistics`)}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Statistics
+          </Button>
           <Button 
             variant="outline" 
             className="gap-2"
