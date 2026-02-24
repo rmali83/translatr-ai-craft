@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Loader2, CheckCheck, Filter, Download, FileUp } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, CheckCheck, Filter, Download, FileUp, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,7 @@ import { useSocket } from '@/contexts/SocketContext';
 import { api, type Project, type Segment as ApiSegment, type GlossaryTerm } from '@/services/api';
 import { SegmentRow } from '@/components/SegmentRow';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
+import { CollaborationSidebar } from '@/components/CollaborationSidebar';
 import { downloadJSON, downloadCSV, downloadXLIFF, downloadExcel } from '@/utils/fileExporter';
 import { evaluateQuality } from '@/utils/qualityChecker';
 import type { ParsedSegment } from '@/utils/fileParser';
@@ -72,6 +73,7 @@ export default function ProjectDetail() {
   const [workflowStatus, setWorkflowStatus] = useState<any>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [showCollaboration, setShowCollaboration] = useState(false);
 
   // Check permissions
   const canEditProject = canEdit(id);
@@ -539,6 +541,14 @@ export default function ProjectDetail() {
               </SelectContent>
             </Select>
           )}
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => setShowCollaboration(true)}
+          >
+            <Users className="w-4 h-4" />
+            Collaboration
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -748,6 +758,12 @@ export default function ProjectDetail() {
         open={showFileUpload}
         onOpenChange={setShowFileUpload}
         onUpload={handleFileUpload}
+      />
+
+      {/* Collaboration Sidebar */}
+      <CollaborationSidebar
+        open={showCollaboration}
+        onClose={() => setShowCollaboration(false)}
       />
     </div>
   );
