@@ -1,5 +1,5 @@
 import { Progress } from "@/components/ui/progress";
-import { Plus, Filter, Download, Search, Grid3X3, List, Calendar, Globe, FileText, Users, Clock, Zap, ArrowUpRight } from "lucide-react";
+import { Plus, Filter, Download, Search, Grid3X3, List, Calendar, Globe, FileText, Users, Clock, Zap, ArrowUpRight, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api, Project } from "@/services/api";
@@ -12,6 +12,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -21,6 +31,8 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     source_language: '',
@@ -88,6 +100,30 @@ export default function Projects() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    try {
+      await api.deleteProject(projectToDelete.id);
+      
+      toast({
+        title: "Success",
+        description: `Project "${projectToDelete.name}" deleted successfully`
+      });
+      
+      setDeleteDialogOpen(false);
+      setProjectToDelete(null);
+      loadProjects();
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete project",
+        variant: "destructive"
+      });
     }
   };
 
@@ -459,37 +495,86 @@ export default function Projects() {
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project, index) => (
-            <ProjectCard key={project.id} project={project} index={index} />
+            <ProjectCard 
+              key={project.id} 
+              project={project} 
+              index={index}
+              onDelete={(project) => {
+                setProjectToDelete(project);
+                setDeleteDialogOpen(true);
+              }}
+            />
           ))}
         </div>
       ) : (
         <div className="glass-card rounded-2xl overflow-hidden">
-          <ProjectTable projects={filteredProjects} />
+          <ProjectTable 
+            projects={filteredProjects}
+            onDelete={(project) => {
+              setProjectToDelete(project);
+              setDeleteDialogOpen(true);
+            }}
+          />
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="glass-card border-glass-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{projectToDelete?.name}"? This action cannot be undone and will permanently delete all segments, translations, and associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="glass hover-glow">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProject}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function ProjectCard({ project, index }: { project: Project; index: number }) {
+function ProjectCard({ project, index, onDelete }: { project: Project; index: number; onDelete: (project: Project) => void }) {
   return (
     <div 
-      className="group glass-card p-6 rounded-2xl hover-lift hover-glow transition-all duration-500 cursor-pointer"
+      className="group glass-card p-6 rounded-2xl hover-lift hover-glow transition-all duration-500"
       style={{ animationDelay: `${index * 100}ms` }}
     >
-      <Link to={`/projects/${project.id}`} className="block">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-subheading font-bold truncate group-hover:text-accent transition-colors">
-              {project.name}
-            </h3>
-            <p className="text-caption mt-1">
-              Created {new Date(project.created_at).toLocaleDateString()}
-            </p>
-          </div>
-          <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+      <div className="flex items-start justify-between mb-4">
+        <Link to={`/projects/${project.id}`} className="flex-1 min-w-0 cursor-pointer">
+          <h3 className="text-subheading font-bold truncate group-hover:text-accent transition-colors">
+            {project.name}
+          </h3>
+          <p className="text-caption mt-1">
+            Created {new Date(project.created_at).toLocaleDateString()}
+          </p>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link to={`/projects/${project.id}`}>
+            <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+          </Link>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(project);
+            }}
+            className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all duration-300 opacity-0 group-hover:opacity-100"
+            title="Delete project"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
+      </div>
 
+      <Link to={`/projects/${project.id}`} className="block cursor-pointer">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-muted/50">
@@ -519,7 +604,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
   );
 }
 
-function ProjectTable({ projects }: { projects: Project[] }) {
+function ProjectTable({ projects, onDelete }: { projects: Project[]; onDelete: (project: Project) => void }) {
   return (
     <table className="w-full">
       <thead>
@@ -568,12 +653,24 @@ function ProjectTable({ projects }: { projects: Project[] }) {
               {new Date(project.created_at).toLocaleDateString()}
             </td>
             <td className="px-6 py-4">
-              <Link
-                to={`/projects/${project.id}`}
-                className="flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors opacity-0 group-hover:opacity-100"
-              >
-                Open <ArrowUpRight className="w-3 h-3" />
-              </Link>
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Link
+                  to={`/projects/${project.id}`}
+                  className="flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors"
+                >
+                  Open <ArrowUpRight className="w-3 h-3" />
+                </Link>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(project);
+                  }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all duration-300"
+                  title="Delete project"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </td>
           </tr>
         ))}

@@ -43,6 +43,7 @@ export interface Project {
   source_language: string;
   target_language: string;
   status: string;
+  description?: string;
   created_at: string;
 }
 
@@ -179,6 +180,17 @@ class ApiService {
 
     const data = await response.json();
     return data.data;
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/projects/${projectId}`, {
+      method: 'DELETE',
+      headers: await this.getHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete project');
+    }
   }
 
   async createProject(project: Partial<Project>): Promise<Project> {
