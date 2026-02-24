@@ -1,6 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { Plus, Filter, Download, Search, Grid3X3, List, Calendar, Globe, FileText, Users, Clock, Zap, ArrowUpRight, Trash2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api, Project } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function Projects() {
+  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,7 +187,9 @@ export default function Projects() {
         tm_file: null,
         reference_file: null
       });
-      loadProjects();
+      
+      // Navigate to the newly created project's editor
+      navigate(`/projects/${project.id}`);
     } catch (error) {
       console.error('Failed to create project:', error);
       toast({
