@@ -115,12 +115,64 @@ export default function Team() {
     }
 
     try {
-      await api.inviteUser(inviteForm.email, inviteForm.name, inviteForm.role);
-      
-      toast({
-        title: "Success",
-        description: "User invited successfully. They can now sign up with this email."
-      });
+      // Insert user directly into database
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', inviteForm.email)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      let userId: string;
+
+      if (existingUser) {
+        // User already exists, just assign role
+        userId = existingUser.id;
+        toast({
+          title: "Info",
+          description: "User already exists. Assigning role...",
+        });
+      } else {
+        // Create new user
+        const { data: newUser, error: insertError } = await supabase
+          .from('users')
+          .insert([{
+            email: inviteForm.email,
+            name: inviteForm.name,
+          }])
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        userId = newUser.id;
+      }
+
+      // Assign role to user
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert([{
+          user_id: userId,
+          role: inviteForm.role,
+          project_id: null, // Global role
+        }]);
+
+      if (roleError) {
+        // Check if role already exists
+        if (roleError.code === '23505') { // Unique constraint violation
+          toast({
+            title: "Info",
+            description: "User already has this role",
+          });
+        } else {
+          throw roleError;
+        }
+      } else {
+        toast({
+          title: "Success",
+          description: `User ${existingUser ? 'updated' : 'invited'} successfully. They can now sign up with this email.`
+        });
+      }
       
       setIsInviteDialogOpen(false);
       setInviteForm({ name: '', email: '', role: 'translator' });
@@ -137,7 +189,24 @@ export default function Team() {
 
   const handleAssignRole = async (userId: string, role: string) => {
     try {
-      await api.assignUserRole(userId, role);
+      const { error } = await supabase
+        .from('user_roles')
+        .insert([{
+          user_id: userId,
+          role: role,
+          project_id: null,
+        }]);
+
+      if (error) {
+        if (error.code === '23505') {
+          toast({
+            title: "Info",
+            description: "User already has this role",
+          });
+          return;
+        }
+        throw error;
+      }
       
       toast({
         title: "Success",
@@ -149,7 +218,7 @@ export default function Team() {
       console.error('Failed to assign role:', error);
       toast({
         title: "Error",
-        description: "Failed to assign role",
+        description: error instanceof Error ? error.message : "Failed to assign role",
         variant: "destructive"
       });
     }
@@ -159,7 +228,12 @@ export default function Team() {
     if (!selectedRoleToDelete) return;
 
     try {
-      await api.removeUserRole(selectedRoleToDelete.userId, selectedRoleToDelete.roleId);
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('id', selectedRoleToDelete.roleId);
+
+      if (error) throw error;
       
       toast({
         title: "Success",
@@ -173,7 +247,7 @@ export default function Team() {
       console.error('Failed to remove role:', error);
       toast({
         title: "Error",
-        description: "Failed to remove role",
+        description: error instanceof Error ? error.message : "Failed to remove role",
         variant: "destructive"
       });
     }
@@ -183,10 +257,27 @@ export default function Team() {
     if (!selectedUser || !editForm.name) return;
 
     try {
-      await api.updateUserProfile(selectedUser.id, { name: editForm.name });
+      // Update user name
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ name: editForm.name })
+        .eq('id', selectedUser.id);
+
+      if (updateError) throw updateError;
       
+      // Assign new role if specified
       if (editForm.newRole) {
-        await api.assignUserRole(selectedUser.id, editForm.newRole);
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert([{
+            user_id: selectedUser.id,
+            role: editForm.newRole,
+            project_id: null,
+          }]);
+
+        if (roleError && roleError.code !== '23505') {
+          throw roleError;
+        }
       }
       
       toast({
@@ -202,7 +293,7 @@ export default function Team() {
       console.error('Failed to update user:', error);
       toast({
         title: "Error",
-        description: "Failed to update user profile",
+        description: error instanceof Error ? error.message : "Failed to update user profile",
         variant: "destructive"
       });
     }
