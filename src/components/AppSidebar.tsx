@@ -18,7 +18,6 @@ import { useAuth } from "@/contexts/AuthContext";
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", description: "Overview & insights" },
   { to: "/projects", icon: FolderKanban, label: "Projects", description: "Manage translations" },
-  { to: "/editor", icon: Languages, label: "CAT Editor", description: "Translation workspace" },
   { to: "/website", icon: Globe, label: "Website Translation", description: "Translate websites" },
   { to: "/tm", icon: Database, label: "Translation Memory", description: "Reuse translations" },
   { to: "/glossary", icon: BookOpen, label: "Glossary", description: "Term management" },
