@@ -269,14 +269,23 @@ async function translateWithSmartcat(
     glossaryMap.set(placeholder, term.target_term)
   }
   
-  // Smartcat API endpoint for translation
-  const apiUrl = 'https://smartcat.com/api/integration/v1/translate'
+  // Smartcat API endpoint - using the correct v2 endpoint
+  const apiUrl = 'https://smartcat.com/api/integration/v2/translate'
   
   // Create Basic Auth header
   const authString = `${accountId}:${apiKey}`
   const encodedAuth = btoa(authString)
   
   console.log(`📡 Calling Smartcat API...`)
+  console.log(`🔑 Account ID: ${accountId.substring(0, 8)}...`)
+  
+  const requestBody = {
+    text: [textToTranslate],
+    sourceLanguage: srcLang,
+    targetLanguage: tgtLang,
+  }
+  
+  console.log(`📤 Request body:`, JSON.stringify(requestBody))
   
   const response = await fetch(apiUrl, {
     method: 'POST',
@@ -284,24 +293,33 @@ async function translateWithSmartcat(
       'Authorization': `Basic ${encodedAuth}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      text: textToTranslate,
-      sourceLanguage: srcLang,
-      targetLanguage: tgtLang,
-    }),
+    body: JSON.stringify(requestBody),
   })
+
+  console.log(`📥 Response status: ${response.status}`)
 
   if (!response.ok) {
     const error = await response.text()
     console.error('❌ Smartcat API error:', error)
     console.error('❌ Response status:', response.status)
+    console.error('❌ Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())))
     throw new Error(`Smartcat translation failed: ${response.status} - ${error}`)
   }
 
   const data = await response.json()
   console.log('📥 Smartcat response:', JSON.stringify(data))
   
-  let translation = data.translation || data.text || ''
+  // Smartcat v2 API returns array of translations
+  let translation = ''
+  if (Array.isArray(data) && data.length > 0) {
+    translation = data[0]
+  } else if (data.translation) {
+    translation = data.translation
+  } else if (data.text) {
+    translation = data.text
+  } else if (typeof data === 'string') {
+    translation = data
+  }
   
   if (!translation) {
     console.error('❌ No translation in Smartcat response:', data)
