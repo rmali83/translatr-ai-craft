@@ -34,6 +34,7 @@ import { api, type Project, type Segment as ApiSegment, type GlossaryTerm } from
 import { SegmentRow } from '@/components/SegmentRow';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { downloadJSON, downloadCSV, downloadXLIFF, downloadExcel } from '@/utils/fileExporter';
+import { evaluateQuality } from '@/utils/qualityChecker';
 import type { ParsedSegment } from '@/utils/fileParser';
 
 interface Segment extends Omit<ApiSegment, 'status'> {
@@ -383,6 +384,9 @@ export default function ProjectDetail() {
       if (response.success) {
         console.log('✅ Translation successful:', response.data.translated_text);
         
+        // Evaluate quality
+        const qualityResult = evaluateQuality(segment.source_text, response.data.translated_text);
+        
         setSegments(prev =>
           prev.map(s =>
             s.id === segmentId
@@ -390,16 +394,16 @@ export default function ProjectDetail() {
                   ...s, 
                   target_text: response.data.translated_text, 
                   status: 'draft',
-                  quality_score: response.data.quality_score,
-                  quality_violations: response.data.quality_violations,
-                  quality_suggestions: response.data.quality_suggestions,
+                  quality_score: qualityResult.score,
+                  quality_violations: qualityResult.checks.map(c => `${c.category}: ${c.message}`),
+                  quality_suggestions: qualityResult.suggestions,
                 }
               : s
           )
         );
 
-        const qualityMessage = response.data.quality_score 
-          ? ` (Quality: ${response.data.quality_score}/100${response.data.quality_passed ? ' ✓' : ' - Review needed'})`
+        const qualityMessage = qualityResult.score 
+          ? ` (Quality: ${qualityResult.score}/100${qualityResult.passed ? ' ✓' : ' - Review needed'})`
           : '';
 
         toast({
