@@ -16,7 +16,7 @@ import Glossary from "./pages/Glossary";
 import Analytics from "./pages/Analytics";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
-import WebsiteTranslation from "./pages/WebsiteTranslation";
+import WebsiteTranslation from "./pages/WebsiteTranslationPro";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";

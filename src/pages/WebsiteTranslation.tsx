@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Globe, Link as LinkIcon, Loader2, Download, AlertCircle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Globe, Link as LinkIcon, Loader2, Download, AlertCircle, Upload, FileCode, FileJson, CheckCircle, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 import {
   Select,
   SelectContent,
@@ -12,21 +13,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 
-interface ExtractedContent {
-  title: string;
-  description: string;
-  headings: string[];
-  paragraphs: string[];
-  links: Array<{ text: string; href: string }>;
-  images: Array<{ alt: string; src: string }>;
+interface Segment {
+  id: string;
+  source_text: string;
+  target_text: string;
+  status: 'untranslated' | 'tm_match' | 'fuzzy_match' | 'ai_translated' | 'reviewed';
+  match_score?: number;
+  context?: string;
 }
 
-interface TranslatedContent {
-  title: string;
-  description: string;
-  headings: string[];
-  paragraphs: string[];
+interface ParsedHTML {
+  segments: Segment[];
+  structure: any;
+  originalHTML: string;
 }
 
 export default function WebsiteTranslation() {
