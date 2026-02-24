@@ -1,6 +1,6 @@
 /**
  * File Parser Utilities
- * Supports JSON, CSV, TXT, and Excel (XLSX/XLS) file formats
+ * Supports JSON, CSV, TXT, Excel (XLSX/XLS), XLIFF, and TMX file formats
  */
 
 import * as XLSX from 'xlsx';
@@ -9,6 +9,98 @@ export interface ParsedSegment {
   source_text: string;
   target_text?: string;
   context?: string;
+}
+
+/**
+ * Parse XLIFF file (XML Localization Interchange File Format)
+ * Industry standard for translation files
+ */
+export function parseXLIFF(content: string): ParsedSegment[] {
+  const segments: ParsedSegment[] = [];
+  
+  try {
+    // Parse XML
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(content, 'text/xml');
+    
+    // Check for parsing errors
+    const parserError = xmlDoc.querySelector('parsererror');
+    if (parserError) {
+      throw new Error('Invalid XLIFF XML format');
+    }
+    
+    // Get all trans-unit elements
+    const transUnits = xmlDoc.querySelectorAll('trans-unit');
+    
+    transUnits.forEach((unit) => {
+      const source = unit.querySelector('source')?.textContent?.trim();
+      const target = unit.querySelector('target')?.textContent?.trim();
+      const note = unit.querySelector('note')?.textContent?.trim();
+      
+      if (source) {
+        segments.push({
+          source_text: source,
+          target_text: target || undefined,
+          context: note || undefined,
+        });
+      }
+    });
+    
+    if (segments.length === 0) {
+      throw new Error('No translation units found in XLIFF file');
+    }
+    
+    return segments;
+  } catch (error) {
+    throw new Error('Failed to parse XLIFF file: ' + (error as Error).message);
+  }
+}
+
+/**
+ * Parse TMX file (Translation Memory eXchange)
+ * Standard format for translation memory
+ */
+export function parseTMX(content: string): ParsedSegment[] {
+  const segments: ParsedSegment[] = [];
+  
+  try {
+    // Parse XML
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(content, 'text/xml');
+    
+    // Check for parsing errors
+    const parserError = xmlDoc.querySelector('parsererror');
+    if (parserError) {
+      throw new Error('Invalid TMX XML format');
+    }
+    
+    // Get all tu (translation unit) elements
+    const translationUnits = xmlDoc.querySelectorAll('tu');
+    
+    translationUnits.forEach((tu) => {
+      const tuvs = tu.querySelectorAll('tuv');
+      
+      if (tuvs.length >= 1) {
+        const source = tuvs[0].querySelector('seg')?.textContent?.trim();
+        const target = tuvs[1]?.querySelector('seg')?.textContent?.trim();
+        
+        if (source) {
+          segments.push({
+            source_text: source,
+            target_text: target || undefined,
+          });
+        }
+      }
+    });
+    
+    if (segments.length === 0) {
+      throw new Error('No translation units found in TMX file');
+    }
+    
+    return segments;
+  } catch (error) {
+    throw new Error('Failed to parse TMX file: ' + (error as Error).message);
+  }
 }
 
 /**
@@ -247,13 +339,32 @@ export function parseFile(file: File, content?: string): Promise<ParsedSegment[]
           resolve(segments);
           break;
           
+        case 'xliff':
+        case 'xlf':
+          if (!content) {
+            reject(new Error('Content required for XLIFF files'));
+            return;
+          }
+          segments = parseXLIFF(content);
+          resolve(segments);
+          break;
+          
+        case 'tmx':
+          if (!content) {
+            reject(new Error('Content required for TMX files'));
+            return;
+          }
+          segments = parseTMX(content);
+          resolve(segments);
+          break;
+          
         case 'xlsx':
         case 'xls':
           parseExcel(file).then(resolve).catch(reject);
           break;
           
         default:
-          reject(new Error(`Unsupported file format: ${extension}. Please use Excel (XLSX/XLS), JSON, CSV, or TXT files.`));
+          reject(new Error(`Unsupported file format: ${extension}. Supported formats: Excel (XLSX/XLS), XLIFF, TMX, JSON, CSV, TXT`));
           return;
       }
     } catch (error: any) {

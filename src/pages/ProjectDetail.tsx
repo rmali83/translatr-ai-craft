@@ -33,7 +33,7 @@ import { useSocket } from '@/contexts/SocketContext';
 import { api, type Project, type Segment as ApiSegment, type GlossaryTerm } from '@/services/api';
 import { SegmentRow } from '@/components/SegmentRow';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
-import { downloadJSON, downloadCSV } from '@/utils/fileExporter';
+import { downloadJSON, downloadCSV, downloadXLIFF, downloadExcel } from '@/utils/fileExporter';
 import type { ParsedSegment } from '@/utils/fileParser';
 
 interface Segment extends Omit<ApiSegment, 'status'> {
@@ -323,7 +323,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const handleExport = (format: 'json' | 'csv') => {
+  const handleExport = (format: 'json' | 'csv' | 'xliff' | 'excel') => {
     if (!project || segments.length === 0) {
       toast({
         title: 'Error',
@@ -341,8 +341,12 @@ export default function ProjectDetail() {
 
     if (format === 'json') {
       downloadJSON(exportSegments, project.name);
-    } else {
+    } else if (format === 'csv') {
       downloadCSV(exportSegments, project.name);
+    } else if (format === 'xliff') {
+      downloadXLIFF(exportSegments, project.name, project.source_language, project.target_language);
+    } else if (format === 'excel') {
+      downloadExcel(exportSegments, project.name);
     }
 
     toast({
@@ -539,6 +543,12 @@ export default function ProjectDetail() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('xliff')}>
+                Export as XLIFF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                Export as Excel
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('json')}>
                 Export as JSON
               </DropdownMenuItem>

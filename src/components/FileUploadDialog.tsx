@@ -32,10 +32,10 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
 
     // Validate file type
     const extension = selectedFile.name.split('.').pop()?.toLowerCase();
-    const supportedExtensions = ['json', 'csv', 'txt', 'xlsx', 'xls'];
+    const supportedExtensions = ['xliff', 'xlf', 'tmx', 'json', 'csv', 'txt', 'xlsx', 'xls'];
     
     if (!supportedExtensions.includes(extension || '')) {
-      setError(`Unsupported file format: .${extension}. Please upload JSON, CSV, TXT, or Excel (XLSX/XLS) files.`);
+      setError(`Unsupported file format: .${extension}. Supported formats: XLIFF, TMX, Excel (XLSX/XLS), JSON, CSV, TXT`);
       return;
     }
 
@@ -48,7 +48,7 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
       if (extension === 'xlsx' || extension === 'xls') {
         segments = await parseFile(selectedFile);
       } else {
-        // Handle text-based files
+        // Handle text-based files (JSON, CSV, TXT, XLIFF, TMX)
         const content = await readFileAsText(selectedFile);
         segments = await parseFile(selectedFile, content);
       }
@@ -128,7 +128,7 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
           <DialogDescription>
-            Upload JSON, CSV, TXT, or Excel files to import segments
+            Upload XLIFF, TMX, Excel, JSON, CSV, or TXT files to import segments
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +146,7 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
                 Drop your file here or click to browse
               </p>
               <p className="text-xs text-muted-foreground mb-2">
-                Supports JSON, CSV, TXT, and Excel (XLSX/XLS) files
+                Supports XLIFF, TMX, Excel, JSON, CSV, and TXT files
               </p>
               <p className="text-xs text-blue-600">
                 If you don't see your file type, try typing *.* in the filename field or change "All supported files" to "All files"
@@ -154,7 +154,7 @@ export function FileUploadDialog({ open, onOpenChange, onUpload }: FileUploadDia
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json,.csv,.txt,.xlsx,.xls,.tmx,.xliff,.xlf,.doc,.docx,.pdf"
+                accept=".xliff,.xlf,.tmx,.json,.csv,.txt,.xlsx,.xls"
                 onChange={(e) => {
                   const selectedFile = e.target.files?.[0];
                   if (selectedFile) handleFileSelect(selectedFile);
