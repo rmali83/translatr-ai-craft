@@ -231,7 +231,7 @@ export default function Index() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <Link 
-                        to={`/projects/${project.id}`}
+                        to={`/editor?project=${project.id}`}
                         className="text-sm font-semibold text-foreground hover:text-accent transition-colors truncate"
                       >
                         {project.name}

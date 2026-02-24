@@ -224,7 +224,7 @@ export default function Projects() {
       });
       
       // Navigate to the newly created project's editor
-      navigate(`/projects/${project.id}`);
+      navigate(`/editor?project=${project.id}`);
     } catch (error) {
       console.error('Failed to create project:', error);
       toast({
@@ -588,7 +588,7 @@ function ProjectCard({ project, index, onDelete }: { project: Project; index: nu
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <div className="flex items-start justify-between mb-4">
-        <Link to={`/projects/${project.id}`} className="flex-1 min-w-0 cursor-pointer">
+        <Link to={`/editor?project=${project.id}`} className="flex-1 min-w-0 cursor-pointer">
           <h3 className="text-subheading font-bold truncate group-hover:text-accent transition-colors">
             {project.name}
           </h3>
@@ -597,7 +597,7 @@ function ProjectCard({ project, index, onDelete }: { project: Project; index: nu
           </p>
         </Link>
         <div className="flex items-center gap-2">
-          <Link to={`/projects/${project.id}`}>
+          <Link to={`/editor?project=${project.id}`}>
             <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
           </Link>
           <button
@@ -613,7 +613,7 @@ function ProjectCard({ project, index, onDelete }: { project: Project; index: nu
         </div>
       </div>
 
-      <Link to={`/projects/${project.id}`} className="block cursor-pointer">
+      <Link to={`/editor?project=${project.id}`} className="block cursor-pointer">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-muted/50">
@@ -665,7 +665,7 @@ function ProjectTable({ projects, onDelete }: { projects: Project[]; onDelete: (
             <td className="px-6 py-4">
               <div>
                 <Link 
-                  to={`/projects/${project.id}`} 
+                  to={`/editor?project=${project.id}`} 
                   className="text-sm font-semibold text-foreground hover:text-accent transition-colors"
                 >
                   {project.name}
@@ -694,7 +694,7 @@ function ProjectTable({ projects, onDelete }: { projects: Project[]; onDelete: (
             <td className="px-6 py-4">
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Link
-                  to={`/projects/${project.id}`}
+                  to={`/editor?project=${project.id}`}
                   className="flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors"
                 >
                   Open <ArrowUpRight className="w-3 h-3" />

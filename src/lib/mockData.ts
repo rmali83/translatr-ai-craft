@@ -17,6 +17,7 @@ export interface TranslationSegment {
   status: "confirmed" | "draft" | "untranslated" | "review";
   tmMatch: number | null;
   aiConfidence: number | null;
+  _apiId?: string; // Real segment ID from database
 }
 
 export const mockProjects: Project[] = [

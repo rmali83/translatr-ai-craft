@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { mockSegments, type TranslationSegment } from "@/lib/mockData";
+import { api, type Project, type Segment as ApiSegment } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 import {
   Sparkles,
   Check,
@@ -26,7 +29,14 @@ const GLOSSARY = [
 ];
 
 export default function Editor() {
-  const [segments, setSegments] = useState<TranslationSegment[]>(mockSegments);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const projectId = searchParams.get('project');
+  
+  const [project, setProject] = useState<Project | null>(null);
+  const [segments, setSegments] = useState<TranslationSegment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeSegment, setActiveSegment] = useState<number>(3);
   const [showChat, setShowChat] = useState(false);
   const [aiResult, setAiResult] = useState<TranslationResult | null>(null);
@@ -35,6 +45,59 @@ export default function Editor() {
   const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
 
   const ai = useAITranslation();
+  
+  // Load project data
+  useEffect(() => {
+    if (projectId) {
+      loadProjectData();
+    } else {
+      // Use mock data if no project ID
+      setSegments(mockSegments);
+      setLoading(false);
+    }
+  }, [projectId]);
+  
+  const loadProjectData = async () => {
+    if (!projectId) return;
+    
+    try {
+      setLoading(true);
+      const [projectData, segmentsData] = await Promise.all([
+        api.getProject(projectId),
+        api.getSegments(projectId),
+      ]);
+      
+      setProject(projectData);
+      
+      // Convert API segments to TranslationSegment format
+      const convertedSegments: TranslationSegment[] = segmentsData.map((seg, index) => ({
+        id: index + 1,
+        source: seg.source_text,
+        target: seg.target_text || '',
+        status: seg.status === 'confirmed' ? 'confirmed' : seg.target_text ? 'draft' : 'untranslated',
+        tmMatch: undefined,
+        aiConfidence: undefined,
+        _apiId: seg.id, // Store the real API ID
+      }));
+      
+      setSegments(convertedSegments);
+      if (convertedSegments.length > 0) {
+        setActiveSegment(1);
+      }
+    } catch (error) {
+      console.error('Failed to load project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load project data',
+        variant: 'destructive',
+      });
+      // Fallback to mock data
+      setSegments(mockSegments);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const active = segments.find((s) => s.id === activeSegment);
 
   const handleTargetChange = (id: number, value: string) => {
@@ -45,10 +108,34 @@ export default function Editor() {
     );
   };
 
-  const confirmSegment = (id: number) => {
+  const confirmSegment = async (id: number) => {
+    const segment = segments.find(s => s.id === id);
+    if (!segment) return;
+    
     setSegments((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status: "confirmed" } : s))
     );
+    
+    // Save to database if we have a real project
+    if (projectId && segment._apiId) {
+      try {
+        await api.updateSegment(segment._apiId, {
+          target_text: segment.target,
+          status: 'confirmed',
+        });
+        toast({
+          title: 'Segment confirmed',
+          description: 'Segment saved and confirmed successfully',
+        });
+      } catch (error) {
+        console.error('Failed to save segment:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to save segment',
+          variant: 'destructive',
+        });
+      }
+    }
   };
 
   const applyTranslation = (text: string) => {
@@ -116,12 +203,25 @@ export default function Editor() {
 
   return (
     <div className="space-y-4">
+      {loading ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="w-8 h-8 rounded-full bg-gradient-accent animate-pulse mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading project...</p>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Editor Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">CAT Editor</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Marketing Website v3.2 · EN → DE · {segments.length} segments
+            {project ? (
+              `${project.name} · ${project.source_language} → ${project.target_language} · ${segments.length} segments`
+            ) : (
+              `Marketing Website v3.2 · EN → DE · ${segments.length} segments`
+            )}
           </p>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -296,6 +396,8 @@ export default function Editor() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }
