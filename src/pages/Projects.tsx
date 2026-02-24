@@ -154,29 +154,64 @@ export default function Projects() {
 
       const project = await api.createProject(projectData);
       
-      // Upload files if provided
-      if (formData.tm_file || formData.reference_file) {
-        const uploadPromises = [];
-        
-        if (formData.tm_file) {
-          uploadPromises.push(
-            api.uploadProjectFile(project.id, formData.tm_file, 'tm')
-          );
+      // Parse and import TM file if provided
+      if (formData.tm_file) {
+        try {
+          const { parseFile, readFileAsText } = await import('@/utils/fileParser');
+          
+          // Read file content for text-based formats
+          const extension = formData.tm_file.name.split('.').pop()?.toLowerCase();
+          let content: string | undefined;
+          
+          if (['json', 'csv', 'txt', 'xliff', 'xlf', 'tmx'].includes(extension || '')) {
+            content = await readFileAsText(formData.tm_file);
+          }
+          
+          // Parse file into segments
+          const parsedSegments = await parseFile(formData.tm_file, content);
+          
+          // Create segments in the project
+          if (parsedSegments.length > 0) {
+            await Promise.all(
+              parsedSegments.map(segment =>
+                api.createSegment({
+                  project_id: project.id,
+                  source_text: segment.source_text,
+                  target_text: segment.target_text || null,
+                  status: 'draft',
+                })
+              )
+            );
+            
+            toast({
+              title: "Success",
+              description: `Project created with ${parsedSegments.length} segments imported`,
+            });
+          }
+        } catch (parseError) {
+          console.error('Failed to parse TM file:', parseError);
+          toast({
+            title: "Warning",
+            description: "Project created but failed to import segments from file",
+            variant: "destructive"
+          });
         }
-        
-        if (formData.reference_file) {
-          uploadPromises.push(
-            api.uploadProjectFile(project.id, formData.reference_file, 'reference')
-          );
+      } else {
+        toast({
+          title: "Success",
+          description: "Project created successfully"
+        });
+      }
+      
+      // Upload reference file if provided
+      if (formData.reference_file) {
+        try {
+          await api.uploadProjectFile(project.id, formData.reference_file, 'reference');
+        } catch (uploadError) {
+          console.error('Failed to upload reference file:', uploadError);
         }
-        
-        await Promise.all(uploadPromises);
       }
 
-      toast({
-        title: "Success",
-        description: "Project created successfully"
-      });
       setIsDialogOpen(false);
       setFormData({ 
         name: '', 
@@ -397,7 +432,7 @@ export default function Projects() {
                   <div className="space-y-2">
                     <Label htmlFor="tm-file" className="text-sm font-medium flex items-center gap-2">
                       <FileText className="w-4 h-4" />
-                      Translation Memory File (TMX)
+                      Import Segments File
                     </Label>
                     <div className="relative">
                       <Input 
@@ -409,7 +444,7 @@ export default function Projects() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Upload TMX or XLIFF files to pre-populate translation memory
+                      Upload XLIFF, TMX, Excel, JSON, CSV, or TXT files - segments will be automatically imported into the project
                     </p>
                   </div>
 
