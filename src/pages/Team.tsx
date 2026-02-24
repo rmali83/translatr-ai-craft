@@ -115,64 +115,35 @@ export default function Team() {
     }
 
     try {
-      // Insert user directly into database
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', inviteForm.email)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      let userId: string;
-
-      if (existingUser) {
-        // User already exists, just assign role
-        userId = existingUser.id;
-        toast({
-          title: "Info",
-          description: "User already exists. Assigning role...",
-        });
-      } else {
-        // Create new user
-        const { data: newUser, error: insertError } = await supabase
-          .from('users')
-          .insert([{
+      // Call the invite-user Edge Function
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/invite-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             email: inviteForm.email,
             name: inviteForm.name,
-          }])
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        userId = newUser.id;
-      }
-
-      // Assign role to user
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert([{
-          user_id: userId,
-          role: inviteForm.role,
-          project_id: null, // Global role
-        }]);
-
-      if (roleError) {
-        // Check if role already exists
-        if (roleError.code === '23505') { // Unique constraint violation
-          toast({
-            title: "Info",
-            description: "User already has this role",
-          });
-        } else {
-          throw roleError;
+            role: inviteForm.role,
+          }),
         }
-      } else {
-        toast({
-          title: "Success",
-          description: `User ${existingUser ? 'updated' : 'invited'} successfully. They can now sign up with this email.`
-        });
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to invite user');
       }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Success",
+        description: result.user_existed 
+          ? "Role assigned successfully" 
+          : "Invitation sent! User will receive an email to set up their account."
+      });
       
       setIsInviteDialogOpen(false);
       setInviteForm({ name: '', email: '', role: 'translator' });
