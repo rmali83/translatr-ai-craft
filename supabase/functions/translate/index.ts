@@ -175,55 +175,51 @@ async function translateWithAI(
   console.log(`📝 Text: "${text}"`)
   console.log(`🌍 ${sourceLang} → ${targetLang}`)
   
-  // Try Google Gemini FIRST (free, reliable, no model loading)
+  // Try Smartcat FIRST (CAT-focused, professional quality)
+  const smartcatAccountId = Deno.env.get('SMARTCAT_ACCOUNT_ID')
+  const smartcatApiKey = Deno.env.get('SMARTCAT_API_KEY')
+  
+  if (smartcatAccountId && smartcatApiKey) {
+    console.log('🔑 Using Smartcat API (Primary - CAT-focused)')
+    try {
+      const result = await translateWithSmartcat(text, sourceLang, targetLang, glossary, smartcatAccountId, smartcatApiKey)
+      console.log(`✅ Smartcat translation successful: "${result}"`)
+      return result
+    } catch (error) {
+      console.error('❌ Smartcat FAILED:', error)
+      console.error('❌ Smartcat error message:', error?.message || 'Unknown error')
+      console.log('⚠️ Falling back to Google Gemini...')
+    }
+  } else {
+    console.log('⚠️ SMARTCAT credentials not found, skipping Smartcat')
+  }
+  
+  // Try Google Gemini as fallback
   const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
   
   if (geminiApiKey) {
-    console.log('🔑 Using Google Gemini API (Primary)')
+    console.log('🔑 Using Google Gemini API (Fallback)')
     try {
       const result = await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
       console.log(`✅ Gemini translation successful: "${result}"`)
       return result
     } catch (error) {
       console.error('❌ Gemini FAILED:', error)
-      console.error('❌ Gemini error message:', error?.message || 'Unknown error')
-      console.error('❌ Gemini error stack:', error?.stack || 'No stack trace')
       console.log('⚠️ Falling back to NLLB...')
     }
-  } else {
-    console.log('⚠️ GEMINI_API_KEY not found, skipping Gemini')
   }
   
   // Try NLLB via Hugging Face as fallback
   const hfToken = Deno.env.get('HUGGINGFACE_API_TOKEN')
   
-  console.log(`🔑 Checking HUGGINGFACE_API_TOKEN: ${hfToken ? 'Found' : 'Not found'}`)
-  
   if (hfToken) {
-    console.log('🔑 Using NLLB (Hugging Face) for translation')
+    console.log('🔑 Using NLLB (Hugging Face)')
     try {
       const result = await translateWithNLLB(text, sourceLang, targetLang, glossary, hfToken)
       console.log(`✅ NLLB translation successful: "${result}"`)
       return result
     } catch (error) {
       console.error('❌ NLLB FAILED:', error)
-      console.error('❌ Error message:', error?.message || 'Unknown error')
-      console.error('❌ Error stack:', error?.stack || 'No stack trace')
-      if (error?.cause) {
-        console.error('❌ Error cause:', error.cause)
-      }
-      console.log('⚠️ Falling back to next provider...')
-    }
-  } else {
-    console.log('⚠️ HUGGINGFACE_API_TOKEN not found, skipping NLLB')
-  }
-  
-  if (geminiApiKey) {
-    console.log('🔑 Using Google Gemini API')
-    try {
-      return await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
-    } catch (error) {
-      console.error('❌ Gemini error:', error)
       console.log('⚠️ Falling back to OpenAI...')
     }
   }
@@ -243,6 +239,134 @@ async function translateWithAI(
   
   console.log('⚠️ No API keys found, using mock translation')
   return mockTranslate(text, sourceLang, targetLang, glossary)
+}
+
+// Smartcat Translation API
+async function translateWithSmartcat(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  glossary: GlossaryTerm[],
+  accountId: string,
+  apiKey: string
+): Promise<string> {
+  console.log('🐱 Calling Smartcat API for translation...')
+  
+  // Convert language codes to Smartcat format (ISO 639-1)
+  const srcLang = convertToSmartcatCode(sourceLang)
+  const tgtLang = convertToSmartcatCode(targetLang)
+  
+  console.log(`🔄 Smartcat codes: ${srcLang} → ${tgtLang}`)
+  
+  // Apply glossary terms before translation
+  let textToTranslate = text
+  const glossaryMap = new Map<string, string>()
+  
+  for (const term of glossary) {
+    const placeholder = `__GLOSSARY_${glossaryMap.size}__`
+    const regex = new RegExp(`\\b${term.source_term}\\b`, 'gi')
+    textToTranslate = textToTranslate.replace(regex, placeholder)
+    glossaryMap.set(placeholder, term.target_term)
+  }
+  
+  // Smartcat API endpoint for translation
+  const apiUrl = 'https://smartcat.com/api/integration/v1/translate'
+  
+  // Create Basic Auth header
+  const authString = `${accountId}:${apiKey}`
+  const encodedAuth = btoa(authString)
+  
+  console.log(`📡 Calling Smartcat API...`)
+  
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${encodedAuth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text: textToTranslate,
+      sourceLanguage: srcLang,
+      targetLanguage: tgtLang,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('❌ Smartcat API error:', error)
+    console.error('❌ Response status:', response.status)
+    throw new Error(`Smartcat translation failed: ${response.status} - ${error}`)
+  }
+
+  const data = await response.json()
+  console.log('📥 Smartcat response:', JSON.stringify(data))
+  
+  let translation = data.translation || data.text || ''
+  
+  if (!translation) {
+    console.error('❌ No translation in Smartcat response:', data)
+    throw new Error('Smartcat returned empty translation')
+  }
+  
+  // Replace glossary placeholders with target terms
+  for (const [placeholder, targetTerm] of glossaryMap) {
+    translation = translation.replace(new RegExp(placeholder, 'g'), targetTerm)
+  }
+  
+  console.log(`✅ Smartcat translation successful: "${translation}"`)
+  return translation
+}
+
+// Convert language codes to Smartcat format (ISO 639-1)
+function convertToSmartcatCode(lang: string): string {
+  const langMap: Record<string, string> = {
+    // Full names to ISO codes
+    'english': 'en',
+    'spanish': 'es',
+    'french': 'fr',
+    'german': 'de',
+    'urdu': 'ur',
+    'arabic': 'ar',
+    'chinese': 'zh',
+    'japanese': 'ja',
+    'korean': 'ko',
+    'portuguese': 'pt',
+    'russian': 'ru',
+    'italian': 'it',
+    'dutch': 'nl',
+    'polish': 'pl',
+    'turkish': 'tr',
+    'hindi': 'hi',
+    'bengali': 'bn',
+    'punjabi': 'pa',
+    'vietnamese': 'vi',
+    'thai': 'th',
+    'indonesian': 'id',
+    'malay': 'ms',
+    'tagalog': 'tl',
+    'swahili': 'sw',
+    'hebrew': 'he',
+    'persian': 'fa',
+    'auto': 'en', // Default to English for auto-detect
+  }
+  
+  const lowerLang = lang.toLowerCase()
+  
+  // If already ISO code (2 letters), return as is
+  if (lowerLang.length === 2) {
+    return lowerLang
+  }
+  
+  // Otherwise, try to map from full name
+  const isoCode = langMap[lowerLang]
+  
+  if (!isoCode) {
+    console.warn(`⚠️ Unknown language: ${lang}, defaulting to 'en'`)
+    return 'en'
+  }
+  
+  console.log(`🔄 Language mapping: ${lang} → ${isoCode}`)
+  return isoCode
 }
 
 // NLLB Translation via Hugging Face Inference API
