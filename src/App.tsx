@@ -16,6 +16,7 @@ import Glossary from "./pages/Glossary";
 import Analytics from "./pages/Analytics";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
+import WebsiteTranslation from "./pages/WebsiteTranslation";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -87,6 +88,7 @@ const App = () => (
                   <Route path="/projects" element={<Projects />} />
                   <Route path="/projects/:id" element={<ProjectDetail />} />
                   <Route path="/editor" element={<Editor />} />
+                  <Route path="/website" element={<WebsiteTranslation />} />
                   <Route path="/tm" element={<TranslationMemory />} />
                   <Route path="/glossary" element={<Glossary />} />
                   <Route path="/analytics" element={<Analytics />} />
