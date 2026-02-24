@@ -189,7 +189,8 @@ class ApiService {
     });
     
     if (!response.ok) {
-      throw new Error('Failed to delete project');
+      const errorData = await response.json().catch(() => ({ message: 'Failed to delete project' }));
+      throw new Error(errorData.message || 'Failed to delete project');
     }
   }
 

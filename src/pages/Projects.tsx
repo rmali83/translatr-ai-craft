@@ -119,9 +119,10 @@ export default function Projects() {
       loadProjects();
     } catch (error) {
       console.error('Failed to delete project:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete project";
       toast({
         title: "Error",
-        description: "Failed to delete project",
+        description: errorMessage,
         variant: "destructive"
       });
     }
