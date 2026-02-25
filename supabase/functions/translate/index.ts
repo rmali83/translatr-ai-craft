@@ -577,20 +577,20 @@ async function translateWithGemini(
 
   // Try multiple Gemini models in order of preference
   const models = [
-    'gemini-1.5-pro',
-    'gemini-1.5-flash', 
-    'gemini-pro',
-    'gemini-1.0-pro'
+    { name: 'gemini-pro', version: 'v1beta' },
+    { name: 'gemini-1.5-pro-latest', version: 'v1beta' },
+    { name: 'gemini-1.5-flash-latest', version: 'v1beta' },
+    { name: 'gemini-1.0-pro', version: 'v1' },
   ]
   
   let lastError = null
   
   for (const model of models) {
     try {
-      console.log(`🔄 Trying model: ${model}`)
+      console.log(`🔄 Trying model: ${model.name} (API version: ${model.version})`)
       
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -608,7 +608,7 @@ async function translateWithGemini(
 
       if (!response.ok) {
         const error = await response.text()
-        console.error(`❌ Model ${model} failed with status ${response.status}:`, error)
+        console.error(`❌ Model ${model.name} failed with status ${response.status}:`, error)
         lastError = error
         continue // Try next model
       }
@@ -618,16 +618,16 @@ async function translateWithGemini(
       
       // Extract translation from response
       if (!data.candidates || data.candidates.length === 0) {
-        console.error(`❌ Model ${model} returned no candidates`)
+        console.error(`❌ Model ${model.name} returned no candidates`)
         continue // Try next model
       }
       
       const translation = data.candidates[0].content.parts[0].text.trim()
-      console.log(`✅ Gemini translation successful with model: ${model}`)
+      console.log(`✅ Gemini translation successful with model: ${model.name}`)
       return translation
       
     } catch (error) {
-      console.error(`❌ Model ${model} error:`, error)
+      console.error(`❌ Model ${model.name} error:`, error)
       lastError = error
       continue // Try next model
     }
