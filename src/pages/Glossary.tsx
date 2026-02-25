@@ -37,7 +37,7 @@ export default function Glossary() {
   const [terms, setTerms] = useState<GlossaryTerm[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLanguagePair, setSelectedLanguagePair] = useState<string>('');
+  const [selectedLanguagePair, setSelectedLanguagePair] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingTerm, setEditingTerm] = useState<GlossaryTerm | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -58,7 +58,7 @@ export default function Glossary() {
     try {
       setLoading(true);
       const data = await api.getGlossaryTerms(
-        selectedLanguagePair || undefined,
+        selectedLanguagePair !== 'all' ? selectedLanguagePair : undefined,
         searchQuery || undefined
       );
       setTerms(data);
@@ -265,7 +265,7 @@ export default function Glossary() {
                 <SelectValue placeholder="All language pairs" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All language pairs</SelectItem>
+                <SelectItem value="all">All language pairs</SelectItem>
                 {LANGUAGE_PAIRS.map((pair) => (
                   <SelectItem key={pair.value} value={pair.value}>
                     {pair.label}
