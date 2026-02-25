@@ -23,13 +23,128 @@ import { useToast } from '@/hooks/use-toast';
 import { api, type GlossaryTerm } from '@/services/api';
 
 const LANGUAGE_PAIRS = [
+  // English pairs
   { value: 'EN-FR', label: 'English → French' },
   { value: 'EN-DE', label: 'English → German' },
   { value: 'EN-ES', label: 'English → Spanish' },
   { value: 'EN-IT', label: 'English → Italian' },
+  { value: 'EN-PT', label: 'English → Portuguese' },
+  { value: 'EN-RU', label: 'English → Russian' },
+  { value: 'EN-ZH', label: 'English → Chinese' },
+  { value: 'EN-JA', label: 'English → Japanese' },
+  { value: 'EN-KO', label: 'English → Korean' },
+  { value: 'EN-AR', label: 'English → Arabic' },
+  { value: 'EN-HI', label: 'English → Hindi' },
+  { value: 'EN-UR', label: 'English → Urdu' },
+  { value: 'EN-TR', label: 'English → Turkish' },
+  { value: 'EN-NL', label: 'English → Dutch' },
+  { value: 'EN-PL', label: 'English → Polish' },
+  { value: 'EN-SV', label: 'English → Swedish' },
+  { value: 'EN-NO', label: 'English → Norwegian' },
+  { value: 'EN-DA', label: 'English → Danish' },
+  { value: 'EN-FI', label: 'English → Finnish' },
+  { value: 'EN-EL', label: 'English → Greek' },
+  { value: 'EN-HE', label: 'English → Hebrew' },
+  { value: 'EN-TH', label: 'English → Thai' },
+  { value: 'EN-VI', label: 'English → Vietnamese' },
+  { value: 'EN-ID', label: 'English → Indonesian' },
+  { value: 'EN-MS', label: 'English → Malay' },
+  { value: 'EN-CS', label: 'English → Czech' },
+  { value: 'EN-HU', label: 'English → Hungarian' },
+  { value: 'EN-RO', label: 'English → Romanian' },
+  { value: 'EN-UK', label: 'English → Ukrainian' },
+  { value: 'EN-BG', label: 'English → Bulgarian' },
+  
+  // French pairs
   { value: 'FR-EN', label: 'French → English' },
+  { value: 'FR-DE', label: 'French → German' },
+  { value: 'FR-ES', label: 'French → Spanish' },
+  { value: 'FR-IT', label: 'French → Italian' },
+  { value: 'FR-PT', label: 'French → Portuguese' },
+  
+  // German pairs
   { value: 'DE-EN', label: 'German → English' },
+  { value: 'DE-FR', label: 'German → French' },
+  { value: 'DE-ES', label: 'German → Spanish' },
+  { value: 'DE-IT', label: 'German → Italian' },
+  
+  // Spanish pairs
   { value: 'ES-EN', label: 'Spanish → English' },
+  { value: 'ES-FR', label: 'Spanish → French' },
+  { value: 'ES-DE', label: 'Spanish → German' },
+  { value: 'ES-PT', label: 'Spanish → Portuguese' },
+  { value: 'ES-IT', label: 'Spanish → Italian' },
+  
+  // Italian pairs
+  { value: 'IT-EN', label: 'Italian → English' },
+  { value: 'IT-FR', label: 'Italian → French' },
+  { value: 'IT-DE', label: 'Italian → German' },
+  { value: 'IT-ES', label: 'Italian → Spanish' },
+  
+  // Portuguese pairs
+  { value: 'PT-EN', label: 'Portuguese → English' },
+  { value: 'PT-ES', label: 'Portuguese → Spanish' },
+  { value: 'PT-FR', label: 'Portuguese → French' },
+  
+  // Russian pairs
+  { value: 'RU-EN', label: 'Russian → English' },
+  { value: 'RU-DE', label: 'Russian → German' },
+  { value: 'RU-FR', label: 'Russian → French' },
+  
+  // Chinese pairs
+  { value: 'ZH-EN', label: 'Chinese → English' },
+  { value: 'ZH-JA', label: 'Chinese → Japanese' },
+  { value: 'ZH-KO', label: 'Chinese → Korean' },
+  
+  // Japanese pairs
+  { value: 'JA-EN', label: 'Japanese → English' },
+  { value: 'JA-ZH', label: 'Japanese → Chinese' },
+  { value: 'JA-KO', label: 'Japanese → Korean' },
+  
+  // Korean pairs
+  { value: 'KO-EN', label: 'Korean → English' },
+  { value: 'KO-ZH', label: 'Korean → Chinese' },
+  { value: 'KO-JA', label: 'Korean → Japanese' },
+  
+  // Arabic pairs
+  { value: 'AR-EN', label: 'Arabic → English' },
+  { value: 'AR-FR', label: 'Arabic → French' },
+  
+  // Hindi/Urdu pairs
+  { value: 'HI-EN', label: 'Hindi → English' },
+  { value: 'UR-EN', label: 'Urdu → English' },
+  
+  // Turkish pairs
+  { value: 'TR-EN', label: 'Turkish → English' },
+  { value: 'TR-DE', label: 'Turkish → German' },
+  
+  // Dutch pairs
+  { value: 'NL-EN', label: 'Dutch → English' },
+  { value: 'NL-DE', label: 'Dutch → German' },
+  { value: 'NL-FR', label: 'Dutch → French' },
+  
+  // Polish pairs
+  { value: 'PL-EN', label: 'Polish → English' },
+  { value: 'PL-DE', label: 'Polish → German' },
+  
+  // Nordic language pairs
+  { value: 'SV-EN', label: 'Swedish → English' },
+  { value: 'NO-EN', label: 'Norwegian → English' },
+  { value: 'DA-EN', label: 'Danish → English' },
+  { value: 'FI-EN', label: 'Finnish → English' },
+  
+  // Other pairs
+  { value: 'EL-EN', label: 'Greek → English' },
+  { value: 'HE-EN', label: 'Hebrew → English' },
+  { value: 'TH-EN', label: 'Thai → English' },
+  { value: 'VI-EN', label: 'Vietnamese → English' },
+  { value: 'ID-EN', label: 'Indonesian → English' },
+  { value: 'MS-EN', label: 'Malay → English' },
+  { value: 'CS-EN', label: 'Czech → English' },
+  { value: 'HU-EN', label: 'Hungarian → English' },
+  { value: 'RO-EN', label: 'Romanian → English' },
+  { value: 'UK-EN', label: 'Ukrainian → English' },
+  { value: 'BG-EN', label: 'Bulgarian → English' },
 ];
 
 export default function Glossary() {
