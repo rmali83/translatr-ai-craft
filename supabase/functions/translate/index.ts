@@ -98,6 +98,30 @@ serve(async (req) => {
     // Step 4: AI Translation with OpenAI
     const translatedText = await translateWithAI(source_text, source_lang || 'auto', target_lang, glossaryTerms)
     
+    // Validate translation - don't save to TM if it's the same as source (failed translation)
+    const isSameAsSource = translatedText.toLowerCase().trim() === source_text.toLowerCase().trim()
+    const isPlaceholderTranslation = translatedText.startsWith('[') && translatedText.includes(']')
+    
+    if (isSameAsSource || isPlaceholderTranslation) {
+      console.warn('⚠️ Translation appears to have failed (same as source or placeholder), not saving to TM')
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Translation Failed',
+          message: 'Translation service returned the same text or failed. Please check your API keys.',
+          data: {
+            source_text,
+            translated_text: translatedText,
+            source_lang: source_lang || 'auto',
+            target_lang,
+            source: 'FAILED',
+          },
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
     const quality = {
       score: 85,
       passed: true,
@@ -105,7 +129,7 @@ serve(async (req) => {
       suggestions: []
     }
 
-    // Step 5: Save to TM
+    // Step 5: Save to TM (only if translation is valid)
     const { data: newTmEntry } = await supabaseClient
       .from('translation_memory')
       .insert([
@@ -199,14 +223,19 @@ async function translateWithAI(
   
   if (geminiApiKey) {
     console.log('🔑 Using Google Gemini API (Fallback)')
+    console.log(`🔑 Gemini API Key exists: ${geminiApiKey.substring(0, 10)}...`)
     try {
       const result = await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
       console.log(`✅ Gemini translation successful: "${result}"`)
       return result
     } catch (error) {
       console.error('❌ Gemini FAILED:', error)
+      console.error('❌ Gemini error details:', error?.message || 'Unknown error')
+      console.error('❌ Gemini error stack:', error?.stack || 'No stack trace')
       console.log('⚠️ Falling back to NLLB...')
     }
+  } else {
+    console.log('⚠️ GEMINI_API_KEY not found in environment')
   }
   
   // Try NLLB via Hugging Face as fallback
