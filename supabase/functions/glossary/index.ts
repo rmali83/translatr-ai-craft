@@ -13,9 +13,12 @@ serve(async (req) => {
   }
 
   try {
+    // Use service role for delete operations to bypass RLS
+    const useServiceRole = req.method === 'DELETE';
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      useServiceRole ? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' : Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
           headers: { Authorization: req.headers.get('Authorization')! },
