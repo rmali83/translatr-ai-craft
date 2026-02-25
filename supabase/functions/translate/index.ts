@@ -560,7 +560,7 @@ async function translateWithGemini(
   
   // Build prompt with glossary
   let prompt = `Translate the following text from ${sourceLang} to ${targetLang}.\n`
-  prompt += `Return ONLY the translated text, nothing else.\n`
+  prompt += `Return ONLY the translated text, nothing else. Do not include any explanations or notes.\n`
 
   if (glossary.length > 0) {
     prompt += `\nStrictly follow these glossary terms:\n`
@@ -575,8 +575,9 @@ async function translateWithGemini(
 
   prompt += `\nText to translate:\n${text}`
 
+  // Use the latest Gemini model (gemini-1.5-flash is faster and free)
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -601,6 +602,13 @@ async function translateWithGemini(
   }
 
   const data = await response.json()
+  console.log('📥 Gemini response:', JSON.stringify(data))
+  
+  // Extract translation from response
+  if (!data.candidates || data.candidates.length === 0) {
+    throw new Error('Gemini returned no candidates')
+  }
+  
   const translation = data.candidates[0].content.parts[0].text.trim()
   console.log('✅ Gemini translation successful')
   return translation
