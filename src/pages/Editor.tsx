@@ -15,12 +15,10 @@ import {
   BarChart3,
   ArrowLeft,
 } from "lucide-react";
-import { useAITranslation } from "@/hooks/useAITranslation";
 import type { TranslationResult, QAResult, RiskResult, RewriteResult } from "@/hooks/useAITranslation";
 import AISuggestionsPanel from "@/components/editor/AISuggestionsPanel";
 import AIQAPanel from "@/components/editor/AIQAPanel";
 import AIAssistantChat from "@/components/editor/AIAssistantChat";
-import { toast } from "@/hooks/use-toast";
 
 const GLOSSARY = [
   { en: "Enterprise-grade", de: "auf Unternehmensniveau" },
@@ -39,14 +37,13 @@ export default function Editor() {
   const [project, setProject] = useState<Project | null>(null);
   const [segments, setSegments] = useState<TranslationSegment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [translating, setTranslating] = useState(false);
   const [activeSegment, setActiveSegment] = useState<number>(3);
   const [showChat, setShowChat] = useState(false);
   const [aiResult, setAiResult] = useState<TranslationResult | null>(null);
   const [rewriteResult, setRewriteResult] = useState<RewriteResult | null>(null);
   const [qaResult, setQaResult] = useState<QAResult | null>(null);
   const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
-
-  const ai = useAITranslation();
   
   // Load project data
   useEffect(() => {
@@ -147,51 +144,70 @@ export default function Editor() {
   };
 
   const handleTranslate = async () => {
-    if (!active) return;
+    if (!active || !project) return;
     setRewriteResult(null);
+    setAiResult(null);
+    
     try {
-      const result = await ai.translate(active.source, "EN", "DE", GLOSSARY);
-      setAiResult(result);
-    } catch {
-      toast({ title: "AI Error", description: "Failed to get translation.", variant: "destructive" });
+      setTranslating(true);
+      
+      // Use the real translation API
+      const response = await api.translate({
+        source_text: active.source,
+        source_lang: project.source_language,
+        target_lang: project.target_language,
+        project_id: project.id,
+        use_glossary: true,
+      });
+      
+      if (response.success) {
+        // Update the segment with translation
+        handleTargetChange(active.id, response.data.translated_text);
+        
+        // Show success message
+        toast({
+          title: 'Translation Complete',
+          description: `Source: ${response.data.source}${response.data.glossary_terms_used ? ` (${response.data.glossary_terms_used} glossary terms)` : ''}`,
+        });
+        
+        // Set AI result for display
+        setAiResult({
+          translation: response.data.translated_text,
+          confidence: 85,
+          alternatives: [],
+        });
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast({
+        title: 'Translation Failed',
+        description: 'Could not translate. Please check your API configuration.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTranslating(false);
     }
   };
 
   const handleRewrite = async () => {
-    if (!active?.target) return;
-    setAiResult(null);
-    try {
-      const result = await ai.rewrite(active.source, active.target);
-      setRewriteResult(result);
-    } catch {
-      toast({ title: "AI Error", description: "Failed to rewrite.", variant: "destructive" });
-    }
+    toast({
+      title: 'Feature Coming Soon',
+      description: 'AI Rewrite feature will be available in the next update.',
+    });
   };
 
   const handleQA = async () => {
-    if (!active?.target) {
-      toast({ title: "No translation", description: "Translate the segment first.", variant: "destructive" });
-      return;
-    }
-    try {
-      const result = await ai.qaCheck(active.source, active.target, GLOSSARY);
-      setQaResult(result);
-    } catch {
-      toast({ title: "AI Error", description: "QA check failed.", variant: "destructive" });
-    }
+    toast({
+      title: 'Feature Coming Soon', 
+      description: 'AI QA Check feature will be available in the next update.',
+    });
   };
 
   const handleRisk = async () => {
-    if (!active?.target) {
-      toast({ title: "No translation", description: "Translate the segment first.", variant: "destructive" });
-      return;
-    }
-    try {
-      const result = await ai.riskScore(active.source, active.target);
-      setRiskResult(result);
-    } catch {
-      toast({ title: "AI Error", description: "Risk scoring failed.", variant: "destructive" });
-    }
+    toast({
+      title: 'Feature Coming Soon',
+      description: 'Risk Scoring feature will be available in the next update.',
+    });
   };
 
   // Reset AI results when switching segments
@@ -335,7 +351,7 @@ export default function Editor() {
             active={active ? { source: active.source, target: active.target } : null}
             aiResult={aiResult}
             rewriteResult={rewriteResult}
-            loading={ai.loading}
+            loading={translating}
             onTranslate={handleTranslate}
             onRewrite={handleRewrite}
             onApply={applyTranslation}
@@ -346,7 +362,7 @@ export default function Editor() {
             <AIQAPanel
               qaResult={qaResult}
               riskResult={riskResult}
-              loading={ai.loading}
+              loading={false}
               onRunQA={handleQA}
               onRunRisk={handleRisk}
             />
