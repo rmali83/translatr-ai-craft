@@ -199,30 +199,11 @@ async function translateWithAI(
   console.log(`📝 Text: "${text}"`)
   console.log(`🌍 ${sourceLang} → ${targetLang}`)
   
-  // Try Smartcat FIRST (CAT-focused, professional quality)
-  const smartcatAccountId = Deno.env.get('SMARTCAT_ACCOUNT_ID')
-  const smartcatApiKey = Deno.env.get('SMARTCAT_API_KEY')
-  
-  if (smartcatAccountId && smartcatApiKey) {
-    console.log('🔑 Using Smartcat API (Primary - CAT-focused)')
-    try {
-      const result = await translateWithSmartcat(text, sourceLang, targetLang, glossary, smartcatAccountId, smartcatApiKey)
-      console.log(`✅ Smartcat translation successful: "${result}"`)
-      return result
-    } catch (error) {
-      console.error('❌ Smartcat FAILED:', error)
-      console.error('❌ Smartcat error message:', error?.message || 'Unknown error')
-      console.log('⚠️ Falling back to Google Gemini...')
-    }
-  } else {
-    console.log('⚠️ SMARTCAT credentials not found, skipping Smartcat')
-  }
-  
-  // Try Google Gemini as fallback
+  // Try Google Gemini FIRST (Free, reliable, good quality)
   const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
   
   if (geminiApiKey) {
-    console.log('🔑 Using Google Gemini API (Fallback)')
+    console.log('🔑 Using Google Gemini API (Primary - Free & Reliable)')
     console.log(`🔑 Gemini API Key exists: ${geminiApiKey.substring(0, 10)}...`)
     try {
       const result = await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
@@ -232,10 +213,29 @@ async function translateWithAI(
       console.error('❌ Gemini FAILED:', error)
       console.error('❌ Gemini error details:', error?.message || 'Unknown error')
       console.error('❌ Gemini error stack:', error?.stack || 'No stack trace')
-      console.log('⚠️ Falling back to NLLB...')
+      console.log('⚠️ Falling back to Smartcat...')
     }
   } else {
     console.log('⚠️ GEMINI_API_KEY not found in environment')
+  }
+  
+  // Try Smartcat as fallback (CAT-focused, professional quality)
+  const smartcatAccountId = Deno.env.get('SMARTCAT_ACCOUNT_ID')
+  const smartcatApiKey = Deno.env.get('SMARTCAT_API_KEY')
+  
+  if (smartcatAccountId && smartcatApiKey) {
+    console.log('🔑 Using Smartcat API (Fallback - CAT-focused)')
+    try {
+      const result = await translateWithSmartcat(text, sourceLang, targetLang, glossary, smartcatAccountId, smartcatApiKey)
+      console.log(`✅ Smartcat translation successful: "${result}"`)
+      return result
+    } catch (error) {
+      console.error('❌ Smartcat FAILED:', error)
+      console.error('❌ Smartcat error message:', error?.message || 'Unknown error')
+      console.log('⚠️ Falling back to NLLB...')
+    }
+  } else {
+    console.log('⚠️ SMARTCAT credentials not found, skipping Smartcat')
   }
   
   // Try NLLB via Hugging Face as fallback
