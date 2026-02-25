@@ -575,43 +575,67 @@ async function translateWithGemini(
 
   prompt += `\nText to translate:\n${text}`
 
-  // Use the latest Gemini model (gemini-1.5-flash is faster and free)
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 1024,
+  // Try multiple Gemini models in order of preference
+  const models = [
+    'gemini-1.5-pro',
+    'gemini-1.5-flash', 
+    'gemini-pro',
+    'gemini-1.0-pro'
+  ]
+  
+  let lastError = null
+  
+  for (const model of models) {
+    try {
+      console.log(`🔄 Trying model: ${model}`)
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 1024,
+            }
+          }),
         }
-      }),
+      )
+
+      if (!response.ok) {
+        const error = await response.text()
+        console.error(`❌ Model ${model} failed with status ${response.status}:`, error)
+        lastError = error
+        continue // Try next model
+      }
+
+      const data = await response.json()
+      console.log('📥 Gemini response:', JSON.stringify(data))
+      
+      // Extract translation from response
+      if (!data.candidates || data.candidates.length === 0) {
+        console.error(`❌ Model ${model} returned no candidates`)
+        continue // Try next model
+      }
+      
+      const translation = data.candidates[0].content.parts[0].text.trim()
+      console.log(`✅ Gemini translation successful with model: ${model}`)
+      return translation
+      
+    } catch (error) {
+      console.error(`❌ Model ${model} error:`, error)
+      lastError = error
+      continue // Try next model
     }
-  )
-
-  if (!response.ok) {
-    const error = await response.text()
-    console.error('❌ Gemini API error:', error)
-    console.error('❌ Gemini response status:', response.status)
-    console.error('❌ Gemini response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())))
-    throw new Error(`Gemini translation failed: ${response.status} - ${error}`)
-  }
-
-  const data = await response.json()
-  console.log('📥 Gemini response:', JSON.stringify(data))
-  
-  // Extract translation from response
-  if (!data.candidates || data.candidates.length === 0) {
-    throw new Error('Gemini returned no candidates')
   }
   
-  const translation = data.candidates[0].content.parts[0].text.trim()
-  console.log('✅ Gemini translation successful')
-  return translation
+  // All models failed
+  console.error('❌ All Gemini models failed')
+  throw new Error(`Gemini translation failed with all models. Last error: ${lastError}`)
 }
 
 // OpenAI translation
