@@ -188,7 +188,7 @@ serve(async (req) => {
   }
 })
 
-// AI Translation with multiple providers
+// AI Translation - ONLY Gemini
 async function translateWithAI(
   text: string,
   sourceLang: string,
@@ -199,75 +199,27 @@ async function translateWithAI(
   console.log(`📝 Text: "${text}"`)
   console.log(`🌍 ${sourceLang} → ${targetLang}`)
   
-  // Try Google Gemini FIRST (Free, reliable, good quality)
+  // Use ONLY Google Gemini
   const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
   
-  if (geminiApiKey) {
-    console.log('🔑 Using Google Gemini API (Primary - Free & Reliable)')
-    console.log(`🔑 Gemini API Key exists: ${geminiApiKey.substring(0, 10)}...`)
-    try {
-      const result = await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
-      console.log(`✅ Gemini translation successful: "${result}"`)
-      return result
-    } catch (error) {
-      console.error('❌ Gemini FAILED:', error)
-      console.error('❌ Gemini error details:', error?.message || 'Unknown error')
-      console.error('❌ Gemini error stack:', error?.stack || 'No stack trace')
-      console.log('⚠️ Falling back to Smartcat...')
-    }
-  } else {
-    console.log('⚠️ GEMINI_API_KEY not found in environment')
+  if (!geminiApiKey) {
+    console.error('❌ GEMINI_API_KEY not found in environment')
+    throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY to Supabase secrets.')
   }
   
-  // Try Smartcat as fallback (CAT-focused, professional quality)
-  const smartcatAccountId = Deno.env.get('SMARTCAT_ACCOUNT_ID')
-  const smartcatApiKey = Deno.env.get('SMARTCAT_API_KEY')
+  console.log('🔑 Using Google Gemini API')
+  console.log(`🔑 Gemini API Key exists: ${geminiApiKey.substring(0, 10)}...`)
   
-  if (smartcatAccountId && smartcatApiKey) {
-    console.log('🔑 Using Smartcat API (Fallback - CAT-focused)')
-    try {
-      const result = await translateWithSmartcat(text, sourceLang, targetLang, glossary, smartcatAccountId, smartcatApiKey)
-      console.log(`✅ Smartcat translation successful: "${result}"`)
-      return result
-    } catch (error) {
-      console.error('❌ Smartcat FAILED:', error)
-      console.error('❌ Smartcat error message:', error?.message || 'Unknown error')
-      console.log('⚠️ Falling back to NLLB...')
-    }
-  } else {
-    console.log('⚠️ SMARTCAT credentials not found, skipping Smartcat')
+  try {
+    const result = await translateWithGemini(text, sourceLang, targetLang, glossary, geminiApiKey)
+    console.log(`✅ Gemini translation successful: "${result}"`)
+    return result
+  } catch (error) {
+    console.error('❌ Gemini translation FAILED:', error)
+    console.error('❌ Error message:', error?.message || 'Unknown error')
+    console.error('❌ Error stack:', error?.stack || 'No stack trace')
+    throw new Error(`Gemini translation failed: ${error?.message || 'Unknown error'}`)
   }
-  
-  // Try NLLB via Hugging Face as fallback
-  const hfToken = Deno.env.get('HUGGINGFACE_API_TOKEN')
-  
-  if (hfToken) {
-    console.log('🔑 Using NLLB (Hugging Face)')
-    try {
-      const result = await translateWithNLLB(text, sourceLang, targetLang, glossary, hfToken)
-      console.log(`✅ NLLB translation successful: "${result}"`)
-      return result
-    } catch (error) {
-      console.error('❌ NLLB FAILED:', error)
-      console.log('⚠️ Falling back to OpenAI...')
-    }
-  }
-  
-  // Fallback to OpenAI
-  const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-  
-  if (openaiApiKey) {
-    console.log('🔑 Using OpenAI API')
-    try {
-      return await translateWithOpenAI(text, sourceLang, targetLang, glossary, openaiApiKey)
-    } catch (error) {
-      console.error('❌ OpenAI error:', error)
-      console.log('⚠️ Falling back to mock translation')
-    }
-  }
-  
-  console.log('⚠️ No API keys found, using mock translation')
-  return mockTranslate(text, sourceLang, targetLang, glossary)
 }
 
 // Smartcat Translation API
