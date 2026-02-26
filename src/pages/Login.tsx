@@ -32,8 +32,9 @@ export default function Login() {
       if (data.session) {
         navigate('/');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to login');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
@@ -49,8 +50,9 @@ export default function Login() {
       });
 
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'Failed to login with Google');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to login with Google');
     }
   };
 

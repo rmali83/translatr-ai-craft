@@ -54,8 +54,9 @@ export default function Signup() {
           navigate('/login');
         }, 2000);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to create account');
     } finally {
       setLoading(false);
     }
@@ -71,8 +72,9 @@ export default function Signup() {
       });
 
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign up with Google');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to sign up with Google');
     }
   };
 
