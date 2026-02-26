@@ -22,39 +22,39 @@ import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 
 const statCards = [
-  { 
-    label: "Active Projects", 
-    value: dashboardStats.activeProjects, 
-    icon: FolderKanban, 
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
+  {
+    label: "Active Projects",
+    value: dashboardStats.activeProjects,
+    icon: FolderKanban,
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/10",
     change: "+12%",
     trend: "up"
   },
-  { 
-    label: "Words in Progress", 
-    value: dashboardStats.wordsInProgress.toLocaleString(), 
-    icon: FileText, 
-    color: "text-accent",
-    bgColor: "bg-accent/10",
+  {
+    label: "Words in Progress",
+    value: dashboardStats.wordsInProgress.toLocaleString(),
+    icon: FileText,
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/10",
     change: "+8.2%",
     trend: "up"
   },
-  { 
-    label: "TM Entries", 
-    value: dashboardStats.tmEntries.toLocaleString(), 
-    icon: Database, 
-    color: "text-green-500",
+  {
+    label: "TM Entries",
+    value: dashboardStats.tmEntries.toLocaleString(),
+    icon: Database,
+    color: "text-green-400",
     bgColor: "bg-green-500/10",
     change: "+24%",
     trend: "up"
   },
-  { 
-    label: "Avg. Delivery", 
-    value: `${dashboardStats.avgDeliveryDays} days`, 
-    icon: Clock, 
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
+  {
+    label: "Avg. Delivery",
+    value: `${dashboardStats.avgDeliveryDays} days`,
+    icon: Clock,
+    color: "text-cyan-300",
+    bgColor: "bg-cyan-500/10",
     change: "-15%",
     trend: "down"
   },
@@ -68,8 +68,8 @@ const aiInsights = [
     description: "\"Mobile App Strings\" has 340 segments with 80%+ TM matches. Auto-populate to save ~4 hours.",
     action: "Auto-populate",
     priority: "high",
-    color: "text-green-500",
-    bgColor: "bg-green-500/10"
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/10"
   },
   {
     type: "alert",
@@ -78,7 +78,7 @@ const aiInsights = [
     description: "\"E-commerce Catalog\" is due in 2 days with 8% remaining. Assign an additional translator?",
     action: "Assign translator",
     priority: "urgent",
-    color: "text-red-500",
+    color: "text-red-400",
     bgColor: "bg-red-500/10"
   },
   {
@@ -88,7 +88,7 @@ const aiInsights = [
     description: "3 glossary terms have conflicting translations across active projects. Review recommended.",
     action: "Review terms",
     priority: "medium",
-    color: "text-yellow-500",
+    color: "text-yellow-400",
     bgColor: "bg-yellow-500/10"
   },
 ];
@@ -101,11 +101,11 @@ export default function Index() {
     <div className="space-y-8">
       {/* Header with AI Greeting */}
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-accent opacity-5 rounded-3xl blur-3xl"></div>
-        <div className="relative glass-card p-8 rounded-3xl">
+        <div className="absolute inset-0 bg-cyan-500/5 rounded-3xl blur-3xl"></div>
+        <div className="relative glass-card p-8 rounded-3xl border border-white/5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-display bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent">
+              <h1 className="text-display bg-gradient-to-r from-white to-cyan-400 bg-clip-text text-transparent">
                 Welcome back! 👋
               </h1>
               <p className="text-muted-foreground mt-2 text-lg">
@@ -113,7 +113,7 @@ export default function Index() {
               </p>
             </div>
             <div className="hidden lg:block">
-              <div className="w-24 h-24 rounded-full bg-gradient-accent flex items-center justify-center shadow-2xl">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_30px_rgba(0,255,255,0.3)]">
                 <Sparkles className="w-12 h-12 text-white animate-pulse" />
               </div>
             </div>
@@ -126,23 +126,22 @@ export default function Index() {
         {statCards.map((stat, index) => (
           <div
             key={stat.label}
-            className="group glass-card p-6 rounded-2xl hover-lift hover-glow transition-all duration-500"
+            className="group glass-card p-6 rounded-2xl hover-lift hover-glow transition-all duration-500 border border-white/5"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className={`p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-300`}>
+              <div className={`p-3 rounded-xl ${stat.bgColor} border border-cyan-500/20 group-hover:scale-110 transition-transform duration-300`}>
                 <stat.icon className={`w-6 h-6 ${stat.color}`} />
               </div>
-              <div className={`flex items-center gap-1 text-xs font-medium ${
-                stat.trend === 'up' ? 'text-green-500' : 'text-red-500'
-              }`}>
+              <div className={`flex items-center gap-1 text-xs font-medium ${stat.trend === 'up' ? 'text-green-400' : 'text-red-400'
+                }`}>
                 {stat.trend === 'up' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 {stat.change}
               </div>
             </div>
             <div>
-              <p className="text-caption font-medium uppercase tracking-wider">{stat.label}</p>
-              <p className="text-heading font-bold mt-1 group-hover:text-accent transition-colors">
+              <p className="text-caption font-medium uppercase tracking-wider text-cyan-200/50">{stat.label}</p>
+              <p className="text-heading font-bold mt-1 group-hover:text-cyan-400 transition-colors">
                 {stat.value}
               </p>
             </div>
@@ -163,16 +162,15 @@ export default function Index() {
               <p className="text-caption">Intelligent recommendations</p>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             {aiInsights.map((insight, index) => (
               <div
                 key={index}
-                className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer ${
-                  expandedInsight === index 
-                    ? 'border-accent/50 bg-accent/5' 
+                className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer ${expandedInsight === index
+                    ? 'border-accent/50 bg-accent/5'
                     : 'border-border/50 hover:border-accent/30 hover:bg-accent/5'
-                }`}
+                  }`}
                 onClick={() => setExpandedInsight(expandedInsight === index ? null : index)}
               >
                 <div className="flex items-start gap-3">
@@ -182,11 +180,10 @@ export default function Index() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-sm font-semibold">{insight.title}</p>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        insight.priority === 'urgent' ? 'bg-red-500/20 text-red-500' :
-                        insight.priority === 'high' ? 'bg-orange-500/20 text-orange-500' :
-                        'bg-blue-500/20 text-blue-500'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${insight.priority === 'urgent' ? 'bg-red-500/20 text-red-500' :
+                          insight.priority === 'high' ? 'bg-orange-500/20 text-orange-500' :
+                            'bg-blue-500/20 text-blue-500'
+                        }`}>
                         {insight.priority}
                       </span>
                     </div>
@@ -219,7 +216,7 @@ export default function Index() {
               View all <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          
+
           <div className="space-y-4">
             {activeProjects.map((project, index) => (
               <div
@@ -230,7 +227,7 @@ export default function Index() {
                 <div className="flex items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <Link 
+                      <Link
                         to={`/editor?project=${project.id}`}
                         className="text-sm font-semibold text-foreground hover:text-accent transition-colors truncate"
                       >
@@ -253,20 +250,19 @@ export default function Index() {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="w-32 shrink-0">
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                       <span className="font-medium">{project.progress}%</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        project.progress >= 80 ? 'bg-green-500/20 text-green-500' :
-                        project.progress >= 50 ? 'bg-yellow-500/20 text-yellow-500' :
-                        'bg-red-500/20 text-red-500'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${project.progress >= 80 ? 'bg-green-500/20 text-green-500' :
+                          project.progress >= 50 ? 'bg-yellow-500/20 text-yellow-500' :
+                            'bg-red-500/20 text-red-500'
+                        }`}>
                         {project.progress >= 80 ? 'On track' : project.progress >= 50 ? 'At risk' : 'Delayed'}
                       </span>
                     </div>
-                    <Progress 
-                      value={project.progress} 
+                    <Progress
+                      value={project.progress}
                       className="h-2 bg-muted"
                     />
                   </div>
@@ -288,36 +284,36 @@ export default function Index() {
             <p className="text-caption">Latest updates across your workspace</p>
           </div>
         </div>
-        
+
         <div className="space-y-4">
           {[
-            { 
-              action: "Anna K. confirmed 24 segments", 
-              project: "Marketing Website v3.2", 
+            {
+              action: "Anna K. confirmed 24 segments",
+              project: "Marketing Website v3.2",
               time: "12 min ago",
               type: "user",
               icon: Users,
               color: "text-blue-500"
             },
-            { 
-              action: "AI auto-translated 156 segments", 
-              project: "Mobile App Strings", 
+            {
+              action: "AI auto-translated 156 segments",
+              project: "Mobile App Strings",
               time: "1 hour ago",
               type: "ai",
               icon: Zap,
               color: "text-accent"
             },
-            { 
-              action: "Hans V. submitted for review", 
-              project: "E-commerce Catalog", 
+            {
+              action: "Hans V. submitted for review",
+              project: "E-commerce Catalog",
               time: "3 hours ago",
               type: "user",
               icon: Users,
               color: "text-green-500"
             },
-            { 
-              action: "TM updated with 430 new entries", 
-              project: "Legal Documents Q1", 
+            {
+              action: "TM updated with 430 new entries",
+              project: "Legal Documents Q1",
               time: "Yesterday",
               type: "system",
               icon: Database,

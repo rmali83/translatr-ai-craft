@@ -108,28 +108,43 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Languages className="w-8 h-8 text-accent" />
-            <h1 className="text-2xl font-bold">LinguaFlow</h1>
+    <div className="min-h-screen bg-gradient-secondary flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo Section */}
+        <div className="text-center mb-8">
+          <div className="relative inline-block">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(0,255,255,0.2)] mb-4 mx-auto rotate-3">
+              <Languages className="w-8 h-8 text-white" />
+            </div>
+            <div className="absolute -top-2 -right-2 w-5 h-5 bg-cyan-500 rounded-full animate-bounce"></div>
           </div>
-          <CardTitle className="text-2xl">Create an account</CardTitle>
-          <CardDescription>
-            Enter your details to get started
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="space-y-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-cyan-400 bg-clip-text text-transparent mb-1">
+            LinguaFlow
+          </h1>
+          <p className="text-cyan-200/50 text-sm">Create your AI translation account</p>
+        </div>
+
+        <div className="glass-card p-8 rounded-3xl border border-white/5">
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-bold mb-1">Join the Future 🚀</h2>
+            <p className="text-muted-foreground text-sm">Enter your details to get started</p>
+          </div>
+
+          <form onSubmit={handleSignup} className="space-y-5">
             {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+              <Alert variant="destructive" className="glass border-red-500/20 bg-red-500/10">
+                <AlertDescription className="text-red-400 text-xs">{error}</AlertDescription>
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-semibold uppercase tracking-wider text-cyan-200/50">Full Name</Label>
               <Input
                 id="name"
                 type="text"
@@ -138,11 +153,12 @@ export default function Signup() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 disabled={loading}
+                className="glass border-glass-border focus:ring-2 focus:ring-cyan-500/50 rounded-xl"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-cyan-200/50">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -151,64 +167,67 @@ export default function Signup() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
+                className="glass border-glass-border focus:ring-2 focus:ring-cyan-500/50 rounded-xl"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                minLength={6}
-              />
-              <p className="text-xs text-muted-foreground">
-                Must be at least 6 characters
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-cyan-200/50">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
+                  className="glass border-glass-border focus:ring-2 focus:ring-cyan-500/50 rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className="text-xs font-semibold uppercase tracking-wider text-cyan-200/50">Confirm</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="glass border-glass-border focus:ring-2 focus:ring-cyan-500/50 rounded-xl"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-[0_0_20px_rgba(0,255,255,0.3)] text-white font-bold py-6 rounded-xl transition-all duration-300"
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Create Account'}
             </Button>
           </form>
 
-          <div className="relative my-4">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t border-white/5" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">
-                Or continue with
-              </span>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+              <span className="bg-[#05050f] px-3 text-muted-foreground">Or</span>
             </div>
           </div>
 
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="w-full glass border-white/5 hover:bg-white/5 py-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
             onClick={handleGoogleSignup}
             disabled={loading}
           >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                 fill="#4285F4"
@@ -226,18 +245,17 @@ export default function Signup() {
                 fill="#EA4335"
               />
             </svg>
-            Sign up with Google
+            <span className="text-sm font-medium">Continue with Google</span>
           </Button>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="text-sm text-center text-muted-foreground">
+
+          <p className="text-center mt-8 text-xs text-muted-foreground">
             Already have an account?{' '}
-            <Link to="/login" className="text-accent hover:underline">
+            <Link to="/login" className="text-cyan-400 hover:underline font-bold">
               Sign in
             </Link>
-          </div>
-        </CardFooter>
-      </Card>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

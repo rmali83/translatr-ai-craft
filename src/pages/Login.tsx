@@ -58,8 +58,8 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-secondary flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-accent opacity-10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-primary opacity-10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
       {/* Theme Toggle */}
@@ -72,15 +72,15 @@ export default function Login() {
         {/* Logo Section */}
         <div className="text-center mb-8">
           <div className="relative inline-block">
-            <div className="w-20 h-20 rounded-full bg-gradient-accent flex items-center justify-center shadow-2xl mb-4 mx-auto">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_30px_rgba(0,255,255,0.3)] mb-4 mx-auto">
               <Sparkles className="w-10 h-10 text-white animate-pulse" />
             </div>
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-primary rounded-full animate-bounce"></div>
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-cyan-500 rounded-full animate-bounce shadow-[0_0_15px_rgba(0,255,255,0.5)]"></div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-cyan-400 bg-clip-text text-transparent mb-2">
             LinguaFlow
           </h1>
-          <p className="text-muted-foreground">AI-Powered Translation Suite</p>
+          <p className="text-cyan-200/50">AI-Powered Translation Suite</p>
         </div>
 
         {/* Login Card */}
@@ -146,9 +146,9 @@ export default function Login() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-accent text-white font-medium py-3 rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group" 
+            <Button
+              type="submit"
+              className="w-full bg-gradient-accent text-white font-medium py-3 rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group"
               disabled={loading}
             >
               {loading ? (
@@ -208,8 +208,8 @@ export default function Login() {
           <div className="text-center mt-8">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{' '}
-              <Link 
-                to="/signup" 
+              <Link
+                to="/signup"
                 className="text-accent hover:text-accent/80 font-medium transition-colors"
               >
                 Sign up for free
